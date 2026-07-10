@@ -1269,14 +1269,26 @@
 
       function connectSyncSocket() {
         const syncCode = document.getElementById('cam-sync-code')?.value || 'thiago-scan';
+        const statusEl = document.getElementById('debug-sync-status');
         try {
           if (syncSocket) {
             syncSocket.close();
           }
+          if (statusEl) {
+            statusEl.innerText = 'CONECTANDO...';
+            statusEl.style.color = '#ef4444';
+            statusEl.style.textShadow = '0 0 4px #ef4444';
+          }
+          
           syncSocket = new WebSocket('wss://free.piesocket.com/v3/demo?api_key=VCbEZPAZWSVJE4fsEPYvCwTM503q1IQOfmwh1y2P');
           syncSocket.onopen = () => {
             console.log('CidadeScan Cloud: Sincronização conectada no canal.');
             showToast('Conectado à Nuvem CidadeScan!', 'success');
+            if (statusEl) {
+              statusEl.innerText = 'CONECTADO';
+              statusEl.style.color = '#22c55e';
+              statusEl.style.textShadow = '0 0 4px #22c55e';
+            }
             
             // Tenta iniciar a transmissão caso a câmera já esteja aberta
             if (localWebcamStream) {
@@ -1313,6 +1325,19 @@
 
           syncSocket.onclose = () => {
             console.log('CidadeScan Cloud: Conexão encerrada.');
+            if (statusEl) {
+              statusEl.innerText = 'DESCONECTADO';
+              statusEl.style.color = '#ef4444';
+              statusEl.style.textShadow = '0 0 4px #ef4444';
+            }
+          };
+
+          syncSocket.onerror = (err) => {
+            console.error('Erro no WebSocket de Sync:', err);
+            if (statusEl) {
+              statusEl.innerText = 'ERRO';
+              statusEl.style.color = '#ef4444';
+            }
           };
         } catch (e) {
           console.error('Falha ao conectar WebSocket:', e);
@@ -1418,7 +1443,7 @@
   <!-- Console de Depuração CidadeScan Mobile -->
   <div id="cidadescan-debug-panel" style="position:fixed; bottom:15px; left:15px; z-index:999999; background:rgba(15,23,42,0.95); border:1px solid #22c55e; color:#f8fafc; font-family:monospace; font-size:10px; padding:10px; border-radius:6px; max-width:320px; width:90%; max-height:150px; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5); pointer-events:auto; display:block;">
     <div style="font-weight:700; color:#22c55e; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px; padding-bottom:2px; display:flex; justify-content:space-between; align-items:center;">
-      <span>⚙️ DEPURADOR DE CONEXÃO (CELULAR)</span>
+      <span>⚙️ DEPURADOR DE CONEXÃO: <strong id="debug-sync-status" style="color:#ef4444;text-shadow:0 0 4px #ef4444;">CONECTANDO...</strong></span>
       <button onclick="this.parentElement.parentElement.style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-weight:700; font-size:11px;">[X]</button>
     </div>
     <div id="debug-logs" style="white-space:pre-wrap; max-height:110px; overflow-y:auto;"></div>
