@@ -159,6 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMissionsList();
       } else if (tabId === 'live-cameras') {
         renderLiveCamerasGrid();
+        const syncCodeInput = document.getElementById('header-sync-code');
+        const syncCode = syncCodeInput ? syncCodeInput.value.trim().toLowerCase() : 'thiago-scan';
+        if (syncSocket && syncSocket.readyState === WebSocket.OPEN) {
+          syncSocket.send(JSON.stringify({
+            type: 'REQUEST_STREAM',
+            syncCode: syncCode
+          }));
+        }
       } else if (tabId === 'reports') {
         // Inicializa opções de relatório
       } else if (tabId === 'superadmin') {
@@ -1953,6 +1961,10 @@ document.addEventListener('DOMContentLoaded', () => {
               state.liveWebcamStream.getTracks().forEach(track => track.stop());
               state.liveWebcamStream = null;
             }
+            if (dashboardPeerConnection) {
+              dashboardPeerConnection.close();
+              dashboardPeerConnection = null;
+            }
             if (dashboardCocoRequestFrameId) {
               cancelAnimationFrame(dashboardCocoRequestFrameId);
               dashboardCocoRequestFrameId = null;
@@ -2228,29 +2240,38 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const msg = JSON.parse(event.data);
           
-          if (msg.type === 'NEW_OCCURRENCE' && msg.syncCode === syncCode) {
-            const newOcc = msg.occurrence;
-            
-            // Evita duplicados
-            const exists = state.db.occurrences.some(o => o.code === newOcc.code);
-            if (!exists) {
-              state.db.occurrences.unshift(newOcc);
-              window.CidadeScan.saveDB(state.db);
+          if (msg.syncCode === syncCode) {
+            if (msg.type === 'NEW_OCCURRENCE') {
+              const newOcc = msg.occurrence;
               
-              // Alerta sonoro e visual
-              playBeepChime();
-              
-              // Atualiza visualização ativa
-              renderDashboardStats();
-              renderDashboardCharts();
-              if (state.activeTab === 'occurrences') {
-                renderOccurrencesTable();
+              // Evita duplicados
+              const exists = state.db.occurrences.some(o => o.code === newOcc.code);
+              if (!exists) {
+                state.db.occurrences.unshift(newOcc);
+                window.CidadeScan.saveDB(state.db);
+                
+                // Alerta sonoro e visual
+                playBeepChime();
+                
+                // Atualiza visualização ativa
+                renderDashboardStats();
+                renderDashboardCharts();
+                if (state.activeTab === 'occurrences') {
+                  renderOccurrencesTable();
+                }
+                if (state.activeTab === 'map') {
+                  plotOccurrencesOnMap();
+                }
+                
+                showToast(`[NUVEM] Nova ocorrência real sincronizada: ${newOcc.subcategory}!`, 'success');
               }
-              if (state.activeTab === 'map') {
-                plotOccurrencesOnMap();
+            } else if (msg.type === 'RTC_OFFER') {
+              handleRTCOffer(msg.offer, syncCode);
+            } else if (msg.type === 'RTC_CANDIDATE') {
+              if (dashboardPeerConnection && msg.candidate) {
+                dashboardPeerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate))
+                  .catch(e => console.warn('Aviso ao adicionar candidato ICE:', e));
               }
-              
-              showToast(`[NUVEM] Nova ocorrência real sincronizada: ${newOcc.subcategory}!`, 'success');
             }
           }
         } catch (e) {
@@ -2278,4 +2299,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Inicializa a conexão de sync no carregamento do app
   connectDashboardSyncSocket();
+
+  let dashboardPeerConnection = null;
+  function handleRTCOffer(offer, syncCode) {
+    try {
+      if (dashboardPeerConnection) {
+        dashboardPeerConnection.close();
+      }
+
+      dashboardPeerConnection = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      dashboardPeerConnection.onicecandidate = (event) => {
+        if (event.candidate && syncSocket && syncSocket.readyState === WebSocket.OPEN) {
+          syncSocket.send(JSON.stringify({
+            type: 'RTC_CANDIDATE',
+            syncCode: syncCode,
+            candidate: event.candidate
+          }));
+        }
+      };
+
+      dashboardPeerConnection.ontrack = (event) => {
+        console.log('WebRTC: Recebido stream de vídeo ao vivo do celular!');
+        // Ativa o visor
+        state.isWebcamActive = true;
+        state.liveWebcamStream = event.streams[0];
+        
+        // Re-renderiza o grid
+        renderLiveCamerasGrid();
+        showToast('[NUVEM] Conectado ao vídeo ao vivo do celular!', 'success');
+      };
+
+      dashboardPeerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+        .then(() => dashboardPeerConnection.createAnswer())
+        .then(answer => dashboardPeerConnection.setLocalDescription(answer))
+        .then(() => {
+          syncSocket.send(JSON.stringify({
+            type: 'RTC_ANSWER',
+            syncCode: syncCode,
+            answer: dashboardPeerConnection.localDescription
+          }));
+          console.log('WebRTC: Resposta de transmissão de vídeo enviada ao celular.');
+        })
+        .catch(e => console.error('Erro ao responder oferta WebRTC:', e));
+    } catch (e) {
+      console.error('Erro ao configurar receptor WebRTC:', e);
+    }
+  }
 });

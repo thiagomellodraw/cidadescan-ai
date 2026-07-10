@@ -542,6 +542,9 @@
                 
                 showToast('Webcam ligada e Rede Neural carregada!', 'success');
                 if (window.lucide) window.lucide.createIcons();
+                
+                // Inicializa o streaming de vídeo via WebRTC para a central
+                setTimeout(initWebRTCPeer, 1500);
               })
               .catch(err => {
                 console.error(err);
@@ -1351,12 +1354,90 @@
           syncSocket.onopen = () => {
             console.log('CidadeScan Cloud: Sincronização conectada no canal.');
             showToast('Conectado à Nuvem CidadeScan!', 'success');
+            
+            // Tenta iniciar a transmissão caso a câmera já esteja aberta
+            if (localWebcamStream) {
+              setTimeout(initWebRTCPeer, 1500);
+            }
           };
+
+          syncSocket.onmessage = (event) => {
+            try {
+              const msg = JSON.parse(event.data);
+              if (msg.syncCode === syncCode) {
+                if (msg.type === 'RTC_ANSWER') {
+                  if (peerConnection) {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer))
+                      .then(() => console.log('WebRTC: Conexão P2P de vídeo estabelecida com sucesso!'))
+                      .catch(e => console.error('Erro ao aplicar resposta RTC:', e));
+                  }
+                } else if (msg.type === 'RTC_CANDIDATE') {
+                  if (peerConnection && msg.candidate) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate))
+                      .catch(e => console.warn('Aviso ao adicionar candidato ICE:', e));
+                  }
+                } else if (msg.type === 'REQUEST_STREAM') {
+                  console.log('WebRTC: Central solicitou fluxo de vídeo. Iniciando...');
+                  if (localWebcamStream) {
+                    initWebRTCPeer();
+                  }
+                }
+              }
+            } catch (e) {
+              // Ignora mensagens de outros formatos
+            }
+          };
+
           syncSocket.onclose = () => {
             console.log('CidadeScan Cloud: Conexão encerrada.');
           };
         } catch (e) {
           console.error('Falha ao conectar WebSocket:', e);
+        }
+      }
+
+      let peerConnection = null;
+      function initWebRTCPeer() {
+        const syncCode = document.getElementById('cam-sync-code')?.value || 'thiago-scan';
+        try {
+          if (peerConnection) {
+            peerConnection.close();
+          }
+
+          peerConnection = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          });
+
+          if (localWebcamStream) {
+            localWebcamStream.getTracks().forEach(track => {
+              peerConnection.addTrack(track, localWebcamStream);
+            });
+            console.log('WebRTC: Adicionado faixas de vídeo local à conexão.');
+          }
+
+          peerConnection.onicecandidate = (event) => {
+            if (event.candidate && syncSocket && syncSocket.readyState === WebSocket.OPEN) {
+              syncSocket.send(JSON.stringify({
+                type: 'RTC_CANDIDATE',
+                syncCode: syncCode,
+                candidate: event.candidate
+              }));
+            }
+          };
+
+          peerConnection.createOffer()
+            .then(offer => peerConnection.setLocalDescription(offer))
+            .then(() => {
+              syncSocket.send(JSON.stringify({
+                type: 'RTC_OFFER',
+                syncCode: syncCode,
+                offer: peerConnection.localDescription
+              }));
+              console.log('WebRTC: Oferecendo transmissão de vídeo para a central...');
+            })
+            .catch(e => console.error('Erro ao criar oferta WebRTC:', e));
+        } catch (e) {
+          console.error('Erro ao inicializar WebRTC:', e);
         }
       }
 
