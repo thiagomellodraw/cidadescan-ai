@@ -71,12 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     liveCamCycle: 0,
     liveCamerasList: [
-      { id: 1, name: 'CAM-01', vehicle: 'Caminhão de Coleta 01', operator: 'Ricardo Santos', neighborhood: 'Centro', lat: -22.8820, lng: -42.0180, img: 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?w=400&q=80', speed: 30 },
-      { id: 2, name: 'CAM-02', vehicle: 'Caminhão de Coleta 02', operator: 'Amanda Costa', neighborhood: 'Prainha', lat: -22.9660, lng: -42.0230, img: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=400&q=80', speed: 25 },
-      { id: 3, name: 'CAM-03', vehicle: 'Viatura Fiscalização 05', operator: 'Jorge Silva', neighborhood: 'Monte Alto', lat: -22.9400, lng: -42.0900, img: 'https://images.unsplash.com/photo-1508962914676-134849a727f0?w=400&q=80', speed: 45 },
-      { id: 4, name: 'CAM-05', vehicle: 'Viatura Guarda 12', operator: 'Guarda Oliveira', neighborhood: 'Parque das Águas', lat: -22.8750, lng: -42.0350, img: 'https://images.unsplash.com/photo-1599740831464-5a21c17290ce?w=400&q=80', speed: 40 },
-      { id: 5, name: 'CAM-07', vehicle: 'Moto Coleta Rápida 01', operator: 'Luis Moto', neighborhood: 'Vila Nova', lat: -22.8880, lng: -42.0240, img: 'https://images.unsplash.com/photo-1596276122653-651a3898309f?w=400&q=80', speed: 52 },
-      { id: 6, name: 'CAM-08', vehicle: 'Caminhão Operacional Iluminação', operator: 'Eletricista Roberto', neighborhood: 'Porto do Sol', lat: -22.8700, lng: -42.0050, img: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?w=400&q=80', speed: 20 }
+      { id: 1, name: 'CAM-01', vehicle: 'Caminhão de Coleta 01', operator: 'Ricardo Santos', neighborhood: 'Centro', lat: -22.8820, lng: -42.0180, img: 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?w=400&q=80', speed: 30 }
     ]
   };
 
