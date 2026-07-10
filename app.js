@@ -3,6 +3,35 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Logger de Depuração na Tela
+  function logToDebug(msg, type = 'info') {
+    const logsDiv = document.getElementById('debug-logs');
+    if (logsDiv) {
+      const color = type === 'error' ? '#ef4444' : (type === 'success' ? '#22c55e' : '#38bdf8');
+      logsDiv.innerHTML += `<span style="color:${color}">[${new Date().toLocaleTimeString()}] ${msg}</span>\n`;
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+    }
+  }
+
+  // Intercepta erros globais e logs
+  window.addEventListener('error', (e) => {
+    logToDebug(`${e.message} (${e.filename.split('/').pop()}:${e.lineno})`, 'error');
+  });
+
+  const originalConsoleLog = console.log;
+  console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    logToDebug(args.join(' '), 'info');
+  };
+
+  const originalConsoleError = console.error;
+  console.error = function(...args) {
+    originalConsoleError.apply(console, args);
+    logToDebug(args.join(' '), 'error');
+  };
+
+  logToDebug('CidadeScan Dashboard: Depurador iniciado.', 'success');
+
   // Inicializa a base de dados
   if (window.CidadeScan) {
     window.CidadeScan.init();

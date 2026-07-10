@@ -1091,6 +1091,15 @@
     </div>
   </div>
 
+  <!-- Console de Depuração CidadeScan -->
+  <div id="cidadescan-debug-panel" style="position:fixed; bottom:15px; left:15px; z-index:999999; background:rgba(15,23,42,0.95); border:1px solid #38bdf8; color:#f8fafc; font-family:monospace; font-size:10px; padding:10px; border-radius:6px; max-width:400px; width:90%; max-height:180px; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5); pointer-events:auto; display:block;">
+    <div style="font-weight:700; color:#38bdf8; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px; padding-bottom:2px; display:flex; justify-content:space-between; align-items:center;">
+      <span>⚙️ DEPURADOR DE CONEXÃO (NUVEM)</span>
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-weight:700; font-size:11px;">[X FECHAR]</button>
+    </div>
+    <div id="debug-logs" style="white-space:pre-wrap; max-height:140px; overflow-y:auto;"></div>
+  </div>
+
   <!-- Semente e Lógica de Scripts -->
   <script src="mockData.js"></script>
   <!-- TensorFlow.js e COCO-SSD para Inteligência Artificial de Visão Computacional Real -->

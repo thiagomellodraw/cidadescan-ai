@@ -480,6 +480,35 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Logger de Depuração na Tela
+      function logToDebug(msg, type = 'info') {
+        const logsDiv = document.getElementById('debug-logs');
+        if (logsDiv) {
+          const color = type === 'error' ? '#ef4444' : (type === 'success' ? '#22c55e' : '#38bdf8');
+          logsDiv.innerHTML += `<span style="color:${color}">[${new Date().toLocaleTimeString()}] ${msg}</span>\n`;
+          logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+      }
+
+      // Intercepta erros globais e logs
+      window.addEventListener('error', (e) => {
+        logToDebug(`${e.message} (${e.filename.split('/').pop()}:${e.lineno})`, 'error');
+      });
+
+      const originalConsoleLog = console.log;
+      console.log = function(...args) {
+        originalConsoleLog.apply(console, args);
+        logToDebug(args.join(' '), 'info');
+      };
+
+      const originalConsoleError = console.error;
+      console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        logToDebug(args.join(' '), 'error');
+      };
+
+      logToDebug('CidadeScan Mobile: Depurador iniciado.', 'success');
+
       // --- ESTADO LOCAL CAMERA ---
       const camState = {
         isSystemOn: false,
@@ -1353,12 +1382,45 @@
       }
 
       function showToast(message, type = 'success') {
-        // Envia log para o console para fins auxiliares
         console.log(`[DASHCAM TOAST] ${message} (${type})`);
+        
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+          toastContainer = document.createElement('div');
+          toastContainer.id = 'toast-container';
+          toastContainer.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; display:flex; flex-direction:column; gap:8px;';
+          document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        const colors = {
+          success: '#22c55e',
+          warning: '#f59e0b',
+          danger: '#ef4444',
+          info: '#38bdf8'
+        };
+        const color = colors[type] || '#38bdf8';
+        
+        toast.style.cssText = `background:#1f2937; color:white; border-left:4px solid ${color}; padding:8px 16px; border-radius:4px; font-size:0.8rem; font-weight:600; box-shadow:0 4px 10px rgba(0,0,0,0.3);`;
+        toast.innerText = message;
+        
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+        }, 3000);
       }
 
       if (window.lucide) window.lucide.createIcons();
     });
   </script>
+
+  <!-- Console de Depuração CidadeScan Mobile -->
+  <div id="cidadescan-debug-panel" style="position:fixed; bottom:15px; left:15px; z-index:999999; background:rgba(15,23,42,0.95); border:1px solid #22c55e; color:#f8fafc; font-family:monospace; font-size:10px; padding:10px; border-radius:6px; max-width:320px; width:90%; max-height:150px; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5); pointer-events:auto; display:block;">
+    <div style="font-weight:700; color:#22c55e; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px; padding-bottom:2px; display:flex; justify-content:space-between; align-items:center;">
+      <span>⚙️ DEPURADOR DE CONEXÃO (CELULAR)</span>
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-weight:700; font-size:11px;">[X]</button>
+    </div>
+    <div id="debug-logs" style="white-space:pre-wrap; max-height:110px; overflow-y:auto;"></div>
+  </div>
 </body>
 </html>
