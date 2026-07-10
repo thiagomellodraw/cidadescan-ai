@@ -2230,7 +2230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncSocket.close();
       }
       
-      syncSocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
+      syncSocket = new WebSocket('wss://free.piesocket.com/v3/demo?api_key=VCbEZPAZWSVJE4fsEPYvCwTM503q1IQOfmwh1y2P');
       
       syncSocket.onopen = () => {
         console.log(`CidadeScan Cloud Sync: Conectado ao canal com código '${syncCode}'`);
