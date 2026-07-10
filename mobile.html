@@ -699,7 +699,13 @@
           document.getElementById('hud-lng').innerText = `LNG: ${nextLng.toFixed(5)}`;
           
           if (camSource === 'webcam') {
-            document.getElementById('hud-speed').innerText = `VEL: ${Math.floor(20 + Math.random() * 10)} km/h`;
+            const speed = Math.floor(20 + Math.random() * 10);
+            document.getElementById('hud-speed').innerText = `VEL: ${speed} km/h`;
+            
+            // Captura e transmite o snapshot a cada 2 segundos
+            if (camState.duration % 2 === 0) {
+              sendLiveFrameSnapshot(nextLat, nextLng, speed);
+            }
           } else {
             document.getElementById('hud-speed').innerText = `VEL: ${Math.floor(25 + Math.random() * 15)} km/h`;
             // Varredura de IA automática (apenas no modo simulado)
@@ -708,6 +714,45 @@
             }
           }
         }, 1000);
+
+        function sendLiveFrameSnapshot(lat, lng, speed) {
+          const videoEl = document.getElementById('webcam-stream');
+          if (!videoEl || videoEl.readyState !== 4) return;
+
+          try {
+            if (!window.snapCanvas) {
+              window.snapCanvas = document.createElement('canvas');
+              window.snapCanvas.width = 240;
+              window.snapCanvas.height = 160;
+              window.snapCtx = window.snapCanvas.getContext('2d');
+            }
+            
+            const ctx = window.snapCtx;
+            ctx.save();
+            ctx.translate(240, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(videoEl, 0, 0, 240, 160);
+            ctx.restore();
+
+            const base64 = window.snapCanvas.toDataURL('image/jpeg', 0.4);
+            const syncCode = document.getElementById('cam-sync-code')?.value || 'thiago-scan';
+
+            if (syncSocket && syncSocket.readyState === WebSocket.OPEN) {
+              syncSocket.send(JSON.stringify({
+                type: 'CAM_SNAPSHOT',
+                syncCode: syncCode,
+                imgData: base64,
+                lat: lat,
+                lng: lng,
+                speed: speed,
+                operator: camState.driver,
+                vehicle: camState.vehicleName
+              }));
+            }
+          } catch (e) {
+            console.error('Erro ao gerar/enviar snapshot:', e);
+          }
+        }
         
         if (window.lucide) window.lucide.createIcons();
       }

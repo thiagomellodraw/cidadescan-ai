@@ -2272,6 +2272,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboardPeerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate))
                   .catch(e => console.warn('Aviso ao adicionar candidato ICE:', e));
               }
+            } else if (msg.type === 'CAM_SNAPSHOT') {
+              // Recebe o frame da câmera real em tempo real via WebSocket (100% livre de bloqueio de NAT)
+              const camId = 1;
+              const cam = state.liveCamerasList.find(c => c.id === camId);
+              if (cam) {
+                cam.img = msg.imgData;
+                cam.lat = msg.lat;
+                cam.lng = msg.lng;
+                cam.speed = msg.speed;
+                cam.operator = msg.operator;
+                cam.vehicle = msg.vehicle;
+
+                // Se o painel de monitoramento estiver ativo, atualiza o visor e telemetria na hora
+                if (state.activeTab === 'live-cameras') {
+                  const imgEl = document.getElementById('live-cam-img-1');
+                  const coordsEl = document.getElementById('live-cam-coords-1');
+                  const speedEl = document.getElementById('live-cam-speed-1');
+                  
+                  if (imgEl) {
+                    imgEl.src = msg.imgData;
+                    imgEl.style.display = 'block';
+                    imgEl.style.opacity = '1';
+                  }
+
+                  const videoEl = document.getElementById('live-cam-video-1');
+                  if (videoEl) videoEl.style.display = 'none';
+
+                  if (coordsEl) {
+                    coordsEl.innerHTML = `LAT: ${msg.lat.toFixed(5)}<br>LNG: ${msg.lng.toFixed(5)}`;
+                  }
+                  if (speedEl) {
+                    speedEl.innerText = `${msg.speed} km/h`;
+                  }
+                }
+              }
             }
           }
         } catch (e) {
