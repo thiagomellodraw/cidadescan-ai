@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CidadeScan AI - Inspeção Urbana Inteligente</title>
+  
+  <!-- CSS Global -->
+  <link rel="stylesheet" href="app.css">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Fontes Google Outfit / Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+
+  <!-- ================= TELAS DE LOGIN ================= -->
+  <div id="login-screen" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">CS</div>
+        <div class="logo-text">CidadeScan AI</div>
+        <div class="logo-slogan" style="color: var(--color-text-sub);">A cidade mostra onde precisa de cuidado.</div>
+      </div>
+      
+      <p style="font-size: 0.82rem; color: var(--color-text-sub); text-align: center; margin-bottom: 24px; line-height: 1.4;">
+        A plataforma de inteligência artificial voltada para prefeituras municipais identificarem problemas urbanos automaticamente.
+      </p>
+
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="login-email">Perfil de Acesso (E-mail)</label>
+          <select id="login-email" class="form-control" style="width: 100%;">
+            <option value="admin@cidadescan.gov.br">admin@cidadescan.gov.br (Superadministrador)</option>
+            <option value="luciana.porto@cidadescan.gov.br">luciana.porto@cidadescan.gov.br (Gestor Municipal)</option>
+            <option value="roberto.obras@cidadescan.gov.br">roberto.obras@cidadescan.gov.br (Gestor Secretaria de Obras)</option>
+            <option value="maria.servicos@cidadescan.gov.br">maria.servicos@cidadescan.gov.br (Gestor Secretaria de Serviços)</option>
+            <option value="jorge.fiscal@cidadescan.gov.br">jorge.fiscal@cidadescan.gov.br (Fiscal ou Operador)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label for="login-pass">Senha</label>
+          <input type="password" id="login-pass" class="form-control" value="••••••••" disabled>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; font-size:0.85rem;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--color-text-sub);">
+            <input type="checkbox" checked> Lembrar-me
+          </label>
+          <a href="#" style="color:var(--color-primary); text-decoration:none; font-weight:600;">Esqueceu a senha?</a>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Acessar Painel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= LAYOUT PRINCIPAL DO PAINEL ================= -->
+  <div id="app-main-layout" class="app-container" style="display: none;">
+    
+    <!-- MENU LATERAL (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon">CS</div>
+          <span class="logo-text">CidadeScan AI</span>
+        </div>
+        <div class="logo-slogan">A cidade mostra onde precisa de cuidado.</div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <div class="menu-section-title">Principal</div>
+        <button class="menu-item active" data-tab="dashboard">
+          <i class="lucide-layout-dashboard"></i> Dashboard
+        </button>
+        <button class="menu-item" data-tab="map">
+          <i class="lucide-map"></i> Mapa Operacional
+        </button>
+        <button class="menu-item" data-tab="live-cameras">
+          <i class="lucide-aperture"></i> Câmeras ao Vivo
+        </button>
+        <button class="menu-item" data-tab="validation">
+          <i class="lucide-shield-alert"></i> Central de Validação
+        </button>
+        <button class="menu-item" data-tab="occurrences">
+          <i class="lucide-list-todo"></i> Ocorrências
+        </button>
+        <button class="menu-item" data-tab="missions">
+          <i class="lucide-target"></i> Missões de Varredura
+        </button>
+
+        <div class="menu-section-title">Análise de Dados</div>
+        <button class="menu-item" data-tab="health">
+          <i class="lucide-heart-pulse"></i> Saúde Urbana
+        </button>
+        <button class="menu-item" data-tab="reports">
+          <i class="lucide-file-bar-chart2"></i> Relatórios
+        </button>
+
+        <div class="menu-section-title">Cadastros</div>
+        <button class="menu-item" data-tab="vehicles">
+          <i class="lucide-car"></i> Veículos
+        </button>
+        <button class="menu-item" data-tab="teams">
+          <i class="lucide-users"></i> Equipes
+        </button>
+
+        <!-- SEÇÃO DO SUPERADMIN -->
+        <div id="menu-section-superadmin" style="display: none;">
+          <div class="menu-section-title">Administrador</div>
+          <button class="menu-item" data-tab="superadmin">
+            <i class="lucide-shield"></i> Auditoria e IA
+          </button>
+        </div>
+      </nav>
+
+      <!-- RODAPÉ DO MENU COM PERFIL DO USUÁRIO -->
+      <div class="sidebar-footer">
+        <div class="user-profile-summary">
+          <div id="user-avatar" class="user-avatar">US</div>
+          <div class="user-info-text">
+            <span id="user-name" class="user-name">Usuário</span>
+            <span id="user-role" class="user-role-badge">Perfil</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- WRAPPER DO CONTEÚDO PRINCIPAL -->
+    <main class="main-wrapper">
+      
+      <!-- TOP BAR / HEADER -->
+      <header class="top-bar">
+        <div class="page-title-section">
+          <h1>Dashboard</h1>
+        </div>
+
+        <div class="top-bar-actions">
+          
+          <!-- Seletor de Municípios (Multi-prefeitura) -->
+          <div class="custom-select-wrapper">
+            <i class="lucide-building-2" style="width:16px;color:var(--color-primary);"></i>
+            <select class="topbar-select" id="city-selector-select">
+              <option value="1">Cidade Azul (RJ)</option>
+              <option value="2" disabled>Mar de Vidro (SP) - Indisponível</option>
+              <option value="3" disabled>Monte Claro (MG) - Indisponível</option>
+            </select>
+          </div>
+
+          <!-- Seletor Rápido de Perfis (Fidelidade para Apresentação) -->
+          <div class="custom-select-wrapper">
+            <i class="lucide-user-cog" style="width:16px;color:var(--color-text-sub);"></i>
+            <select class="topbar-select" id="profile-switcher-select">
+              <option value="1">Perfil: Superadmin</option>
+              <option value="2">Perfil: Gestor Municipal</option>
+              <option value="3">Perfil: Gestor Obras</option>
+              <option value="4">Perfil: Gestor Serviços</option>
+              <option value="5">Perfil: Fiscal</option>
+            </select>
+          </div>
+
+          <!-- Sino de Notificações -->
+          <button class="notification-bell">
+            <i class="lucide-bell" style="width:20px;height:20px;color:var(--color-text-main);"></i>
+            <span class="bell-badge"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CORPO DAS TELAS (SPA VIEWS) -->
+      <section class="content-body">
+        
+        <!-- ================= ABE 1: DASHBOARD ================= -->
+        <div id="view-dashboard" class="view-section active-view">
+          
+          <!-- Barra de Filtros Rápida -->
+          <div class="filter-bar">
+            <div class="form-group">
+              <label for="filter-dashboard-neighborhood">Bairro</label>
+              <select id="filter-dashboard-neighborhood" class="form-control">
+                <option value="">Todos os bairros</option>
+                <option value="Centro">Centro</option>
+                <option value="Prainha">Prainha</option>
+                <option value="Monte Alto">Monte Alto</option>
+                <option value="Figueira">Figueira</option>
+                <option value="Vila Nova">Vila Nova</option>
+                <option value="Parque das Águas">Parque das Águas</option>
+                <option value="Jardim Esperança">Jardim Esperança</option>
+                <option value="Porto do Sol">Porto do Sol</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filter-dashboard-severity">Gravidade</label>
+              <select id="filter-dashboard-severity" class="form-control">
+                <option value="">Todas</option>
+                <option value="Baixa">Baixa</option>
+                <option value="Média">Média</option>
+                <option value="Alta">Alta</option>
+                <option value="Crítica">Crítica</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filter-dashboard-status">Status</label>
+              <select id="filter-dashboard-status" class="form-control">
+                <option value="">Todos</option>
+                <option value="Detectada pela IA">Detectada</option>
+                <option value="Aguardando validação">Aguardando Validação</option>
+                <option value="Confirmada">Confirmada</option>
+                <option value="Em atendimento">Em Atendimento</option>
+                <option value="Resolvida">Resolvida</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-primary" id="dashboard-apply-filters">Filtrar</button>
+              <button class="btn btn-secondary" id="trigger-manual-sweep-modal">
+                <i class="lucide-upload-cloud"></i> Varredura Manual
+              </button>
+              <button class="btn btn-success" id="trigger-auto-sweep-demo" style="box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);">
+                <i class="lucide-play-circle"></i> Demo Rota Ao Vivo
+              </button>
+            </div>
+          </div>
+
+          <!-- Cards de Métricas Numericas -->
+          <div class="grid-cols-4">
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(20, 115, 230, 0.1); color: var(--color-primary);">
+                <i class="lucide-eye"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-total-detected">0</span>
+                <span class="stat-label">Total Detectado</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(245, 158, 11, 0.1); color: var(--color-warning);">
+                <i class="lucide-shield-alert"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-pending-val">0</span>
+                <span class="stat-label">Pendentes Validação</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(249, 115, 22, 0.1); color: var(--color-high);">
+                <i class="lucide-check-square"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-confirmed">0</span>
+                <span class="stat-label">Confirmados</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger);">
+                <i class="lucide-alert-octagon"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-critical-active">0</span>
+                <span class="stat-label">Casos Críticos</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(34, 197, 94, 0.1); color: var(--color-success);">
+                <i class="lucide-award"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-resolved">0</span>
+                <span class="stat-label">Resolvidos</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(56, 189, 248, 0.1); color: var(--color-primary-light);">
+                <i class="lucide-truck"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-vehicles-active">0</span>
+                <span class="stat-label">Veículos Ativos</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(139, 92, 246, 0.1); color: var(--color-purple);">
+                <i class="lucide-navigation"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-routes-total">0</span>
+                <span class="stat-label">Rotas Realizadas</span>
+              </div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon-container" style="background-color: rgba(6, 182, 212, 0.1); color: var(--color-info);">
+                <i class="lucide-map-pin"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-value" id="stat-km-total">0 km</span>
+                <span class="stat-label">Varredura Total</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumo Inteligente -->
+          <div class="smart-summary-box">
+            <div class="smart-summary-icon">
+              <i class="lucide-sparkles"></i>
+            </div>
+            <div class="smart-summary-text">
+              <h4 style="font-weight: 700; margin-bottom: 4px; color: var(--color-primary-dark);">Resumo Inteligente da Cidade</h4>
+              <p id="smart-summary-text-p">Processando relatório da inteligência artificial...</p>
+            </div>
+          </div>
+
+          <!-- Gráficos -->
+          <div class="grid-cols-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Problemas por Categoria</div>
+              </div>
+              <div style="height: 280px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="chart-category"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Problemas por Bairro</div>
+              </div>
+              <div style="height: 280px;">
+                <canvas id="chart-neighborhood"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Distribuição por Gravidade</div>
+              </div>
+              <div style="height: 280px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="chart-severity"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Evolução diária (Últimos 10 dias)</div>
+              </div>
+              <div style="height: 280px;">
+                <canvas id="chart-evolution"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ABA 2: MAPA OPERACIONAL ================= -->
+        <div id="view-map" class="view-section">
+          <div class="map-layout-container">
+            <div class="map-wrapper-div">
+              <!-- Filtros Flutuantes sobre o Mapa -->
+              <div class="map-floating-filters">
+                <button class="map-filter-btn active" data-filter="all">Ocorrências</button>
+                <button class="map-filter-btn" data-filter="critical">Críticas</button>
+                <button class="map-filter-btn" data-filter="routes">Rotas</button>
+                <button class="map-filter-btn" data-filter="heat">Calor</button>
+                <button class="map-filter-btn" data-filter="health">Saúde Urbana</button>
+                <button class="map-filter-btn" data-filter="resolved">Resolvidas</button>
+              </div>
+              
+              <!-- Container real do Leaflet -->
+              <div id="leaflet-map-container" class="leaflet-map-element"></div>
+            </div>
+
+            <!-- Painel Lateral Exclusivo do Mapa -->
+            <div class="map-side-panel" id="map-side-panel-el">
+              <div class="map-side-panel-header">
+                <h3 id="map-panel-title">Código Ocorrência</h3>
+                <button class="modal-close" id="close-map-side-panel">&times;</button>
+              </div>
+              <div class="map-side-panel-body">
+                
+                <!-- Detalhes da imagem -->
+                <div class="detail-img-container">
+                  <img id="map-panel-img" src="" alt="Dano Urbano">
+                  <span class="confidence-ribbon" id="map-panel-confidence">Confiança: 90%</span>
+                </div>
+
+                <!-- Status e Gravidade -->
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                  <div>
+                    <div style="font-size:0.75rem; color:var(--color-text-sub); margin-bottom:4px; font-weight:600;">STATUS</div>
+                    <span class="badge" id="map-panel-status">Status</span>
+                  </div>
+                  <div>
+                    <div style="font-size:0.75rem; color:var(--color-text-sub); margin-bottom:4px; font-weight:600;">GRAVIDADE</div>
+                    <span class="badge" id="map-panel-severity">Gravidade</span>
+                  </div>
+                </div>
+
+                <!-- Detalhes Geográficos -->
+                <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem; border-top:1px solid var(--color-border); padding-top:12px;">
+                  <div><strong>Categoria:</strong> <span id="map-panel-category">Tipo de problema</span></div>
+                  <div><strong>Endereço:</strong> <span id="map-panel-addr">Rua, Número</span></div>
+                  <div><strong>Bairro:</strong> <span id="map-panel-neighborhood">Bairro</span></div>
+                  <div><strong>Secretaria Responsável:</strong> <span id="map-panel-dept">Secretaria</span></div>
+                  <div><strong>Captura:</strong> <span id="map-panel-date">Data/Hora</span></div>
+                  <div><strong>Origem:</strong> <span id="map-panel-vehicle">Veículo / Motorista</span></div>
+                  <div><strong>Descrição IA:</strong> <span id="map-panel-desc" style="color:var(--color-text-sub); font-style:italic;">Descrição automática da visão computacional.</span></div>
+                </div>
+
+                <!-- Botões de Ação Dinâmicos -->
+                <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px; border-top:1px solid var(--color-border); padding-top:12px;">
+                  
+                  <!-- Visível se estiver Aguardando Validação -->
+                  <div id="map-panel-validation-actions" style="display:none; gap:10px; width:100%;">
+                    <button class="btn btn-success" id="map-panel-btn-approve" style="flex:1;">Confirmar</button>
+                    <button class="btn btn-danger" id="map-panel-btn-reject" style="flex:1;">Rejeitar</button>
+                  </div>
+
+                  <button class="btn btn-primary" id="map-panel-os-btn">
+                    <i class="lucide-file-text"></i> Criar Ordem de Serviço
+                  </button>
+                  
+                  <button class="btn btn-success" id="map-panel-compare-btn" style="display:none;">
+                    <i class="lucide-columns"></i> Comparar Antes e Depois
+                  </button>
+
+                  <button class="btn btn-secondary" id="map-panel-gmaps-btn">
+                    <i class="lucide-external-link"></i> Abrir no Google Maps
+                  </button>
+                </div>
+
+                <!-- Histórico Completo da Ocorrência -->
+                <div style="margin-top:10px; border-top:1px solid var(--color-border); padding-top:12px;">
+                  <h4 style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:var(--color-primary-dark);">Histórico</h4>
+                  <div id="map-panel-history-list" style="display:flex; flex-direction:column; gap:6px;">
+                    <!-- Preenchido via JS -->
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ABA CÂMERAS AO VIVO ================= -->
+        <div id="view-live-cameras" class="view-section">
+          <div class="card" style="padding: 20px; background: linear-gradient(135deg, var(--color-primary-dark), #1e293b); color: white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <h3 style="font-weight:700; font-size:1.3rem; display:flex; align-items:center; gap:8px;">
+                  <i class="lucide-aperture" style="color:#38bdf8;"></i> Centro de Monitoramento (Câmeras ao Vivo)
+                </h3>
+                <p style="color:var(--color-muted); font-size:0.85rem; margin-top:4px;">
+                  Visualização simultânea de transmissões em tempo real das câmeras de bordo da frota municipal.
+                </p>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <button class="btn btn-secondary" id="btn-toggle-local-webcam" style="padding:6px 12px; font-size:0.75rem; background-color:#1e293b; color:white; border-color:rgba(255,255,255,0.1); font-weight:700; display:flex; align-items:center; gap:6px;">
+                  <i class="lucide-camera" style="width:14px;height:14px;"></i> Ativar Webcam (CAM-01)
+                </button>
+                <div style="display:flex; gap:12px; font-size:0.85rem; background-color:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="width:8px; height:8px; background-color:#22c55e; border-radius:50%; box-shadow:0 0 8px #22c55e; animation: blinkRec 1.5s infinite alternate;"></span>
+                    <strong>6 Câmeras Ativas</strong>
+                  </div>
+                  <span style="color:rgba(255,255,255,0.2);">|</span>
+                  <div>Frota Online: <strong style="color:#38bdf8;">6 de 10</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid de Câmeras -->
+          <div class="grid-cols-3" id="live-cameras-grid-container">
+            <!-- Preenchido dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- ================= ABA 3: CENTRAL DE VALIDAÇÃO ================= -->
+        <div id="view-validation" class="view-section">
+          <div class="validation-layout-container">
+            
+            <!-- Painel da Imagem à Esquerda -->
+            <div class="validation-main-panel">
+              <div class="validation-image-frame" id="validation-img-frame">
+                <!-- Imagem com Bounding Box -->
+              </div>
+              <div class="pagination-container" style="border-radius: 0;">
+                <button class="btn btn-secondary" id="val-btn-prev">Anterior</button>
+                <span id="val-counter-text" style="font-weight:700;">Ocorrência 0 de 0</span>
+                <button class="btn btn-secondary" id="val-btn-next">Próxima</button>
+              </div>
+            </div>
+
+            <!-- Dados da Ocorrência e Controles à Direita -->
+            <div class="validation-info-sidebar">
+              <h3 style="font-weight:700; color:var(--color-primary-dark);">Detecção do Sistema</h3>
+              <div style="font-family: monospace; font-size: 1.1rem; font-weight:700; color:var(--color-primary);" id="val-item-code">CS-XXXXXX</div>
+              
+              <div class="form-group">
+                <label for="val-item-cat">Categoria Sugerida</label>
+                <select id="val-item-cat" class="form-control">
+                  <option value="Pavimentação">Pavimentação</option>
+                  <option value="Limpeza Urbana">Limpeza Urbana</option>
+                  <option value="Vegetação">Vegetação</option>
+                  <option value="Sinalização">Sinalização</option>
+                  <option value="Iluminação Pública">Iluminação Pública</option>
+                  <option value="Calçadas e Acessibilidade">Calçadas e Acessibilidade</option>
+                  <option value="Drenagem">Drenagem</option>
+                  <option value="Patrimônio Público">Patrimônio Público</option>
+                </select>
+              </div>
+
+              <div style="font-size:0.9rem;">
+                <strong>Subcategoria sugerida:</strong> <span id="val-item-subcat">Subtipo</span>
+              </div>
+
+              <div class="form-group">
+                <label for="val-item-severity">Gravidade Sugerida</label>
+                <select id="val-item-severity" class="form-control">
+                  <option value="Baixa">Baixa</option>
+                  <option value="Média">Média</option>
+                  <option value="Alta">Alta</option>
+                  <option value="Crítica">Crítica</option>
+                </select>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.85rem; border-top:1px solid var(--color-border); padding-top:12px;">
+                <div><strong>Endereço:</strong> <span id="val-item-addr">Rua</span></div>
+                <div><strong>Bairro:</strong> <span id="val-item-neighborhood">Bairro</span></div>
+                <div><strong>Data:</strong> <span id="val-item-date">Data</span></div>
+                <div><strong>Veículo Coletor:</strong> <span id="val-item-vehicle">Caminhão 01</span></div>
+                <div><strong>Confiança IA:</strong> <span id="val-item-confidence" style="color:var(--color-success);font-weight:700;">0%</span></div>
+              </div>
+
+              <!-- Ações da Central -->
+              <div style="display:flex; flex-direction:column; gap:10px; border-top:1px solid var(--color-border); padding-top:12px;">
+                <button class="btn btn-success" id="val-btn-approve">
+                  <i class="lucide-check"></i> Confirmar Detecção
+                </button>
+                <button class="btn btn-danger" id="val-btn-reject">
+                  <i class="lucide-x"></i> Rejeitar (Falso Positivo)
+                </button>
+                <button class="btn btn-secondary" id="val-btn-duplicate">
+                  <i class="lucide-copy"></i> Marcar como Duplicada
+                </button>
+              </div>
+
+              <!-- Atalhos de Teclado -->
+              <div class="keyboard-hints">
+                <div style="font-weight: 700; margin-bottom: 8px;">Atalhos de Teclado Rápido</div>
+                <div class="keyboard-hint-row"><span>Confirmar</span> <span class="key-cap">A</span></div>
+                <div class="keyboard-hint-row"><span>Rejeitar</span> <span class="key-cap">R</span></div>
+                <div class="keyboard-hint-row"><span>Duplicada</span> <span class="key-cap">D</span></div>
+                <div class="keyboard-hint-row"><span>Navegar</span> <span class="key-cap">&larr;</span> / <span class="key-cap">&rarr;</span></div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Empty State da Central de Validação -->
+          <div id="validation-empty-state" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:80px; text-align:center;">
+            <div style="width:70px; height:70px; border-radius:50%; background-color:rgba(34, 197, 94, 0.1); color:var(--color-success); display:flex; align-items:center; justify-content:center; font-size:2rem; margin-bottom:16px;">
+              <i class="lucide-check"></i>
+            </div>
+            <h3 style="font-weight:700; color:var(--color-primary-dark); margin-bottom:8px;">Fila de Validação Vazia</h3>
+            <p style="color:var(--color-text-sub); max-width:380px;">Excelente! Não há nenhuma nova ocorrência pendente de validação humana neste momento.</p>
+          </div>
+        </div>
+
+        <!-- ================= ABA 4: OCORRÊNCIAS LISTA ================= -->
+        <div id="view-occurrences" class="view-section">
+          
+          <!-- Filtros de Busca -->
+          <div class="filter-bar">
+            <div class="form-group" style="flex:2;">
+              <label for="search-occ">Pesquisar por Código ou Rua</label>
+              <input type="text" id="search-occ" class="form-control" placeholder="Buscar por ex: CS-2026005 ou Avenida Assunção...">
+            </div>
+            <div class="form-group">
+              <label for="filter-occ-category">Categoria</label>
+              <select id="filter-occ-category" class="form-control">
+                <option value="">Todas</option>
+                <option value="Pavimentação">Pavimentação</option>
+                <option value="Limpeza Urbana">Limpeza Urbana</option>
+                <option value="Vegetação">Vegetação</option>
+                <option value="Sinalização">Sinalização</option>
+                <option value="Iluminação Pública">Iluminação Pública</option>
+                <option value="Calçadas e Acessibilidade">Calçadas e Acessibilidade</option>
+                <option value="Drenagem">Drenagem</option>
+                <option value="Patrimônio Público">Patrimônio Público</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filter-occ-severity">Gravidade</label>
+              <select id="filter-occ-severity" class="form-control">
+                <option value="">Todas</option>
+                <option value="Baixa">Baixa</option>
+                <option value="Média">Média</option>
+                <option value="Alta">Alta</option>
+                <option value="Crítica">Crítica</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filter-occ-status">Status</label>
+              <select id="filter-occ-status" class="form-control">
+                <option value="">Todos</option>
+                <option value="Detectada pela IA">Detectada</option>
+                <option value="Aguardando validação">Aguardando Validação</option>
+                <option value="Confirmada">Confirmada</option>
+                <option value="Em atendimento">Em Atendimento</option>
+                <option value="Serviço executado">Serviço Executado</option>
+                <option value="Resolvida">Resolvida</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tabela -->
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Categoria / Subcategoria</th>
+                  <th>Endereço / Bairro</th>
+                  <th>Data Detecção</th>
+                  <th>Gravidade</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="occurrences-table-body">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+            
+            <!-- Controle Paginação -->
+            <div class="pagination-container">
+              <span id="occ-range-indicator">Exibindo 1-10 de 150 ocorrências</span>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn btn-secondary" id="occ-btn-prev" style="padding: 6px 12px;">Anterior</button>
+                <span id="occ-page-indicator" style="font-weight:600;">Página 1 de 15</span>
+                <button class="btn btn-secondary" id="occ-btn-next" style="padding: 6px 12px;">Próxima</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= ABA 5: MISSÕES DE VARREDURA ================= -->
+        <div id="view-missions" class="view-section">
+          <div class="card" style="padding: 20px 24px; background: linear-gradient(135deg, var(--color-primary-dark), #1E293B); color:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+              <div>
+                <h3 style="font-weight:700; font-size:1.3rem;">Planejador de Campanhas Urbanas</h3>
+                <p style="color:var(--color-muted); font-size:0.85rem; margin-top:4px;">Crie e monitore missões de rastreamento urbano por bairros com coberturas de vias específicas.</p>
+              </div>
+              <button class="btn btn-primary" onclick="showToast('Criação de missões disponível no dashboard através da simulação automática.', 'info')">
+                <i class="lucide-plus"></i> Nova Missão
+              </button>
+            </div>
+          </div>
+          
+          <div class="grid-cols-3" id="missions-list-target">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+        <!-- ================= ABA 6: SAÚDE URBANA (URBAN HEALTH SCORE) ================= -->
+        <div id="view-health" class="view-section">
+          <div class="card" style="padding:20px;">
+            <div class="card-title" style="color:var(--color-primary-dark); font-size:1.2rem; margin-bottom:6px;">Saúde Urbana Cidade Azul</div>
+            <p class="card-desc">As notas representam o índice de conservação geral de cada bairro variando de 0 (Crítico) a 100 (Excelente) com base na presença acumulada de problemas.</p>
+          </div>
+
+          <div class="grid-cols-4" id="health-scores-target">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+        <!-- ================= ABA 7: RELATÓRIOS ================= -->
+        <div id="view-reports" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><i class="lucide-file-text"></i> Central de Exportação e Relatórios</div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              <p style="font-size:0.9rem; color:var(--color-text-sub);">Selecione o filtro desejado para gerar e exportar relatórios executivos para a prefeitura e secretarias municipais.</p>
+              
+              <div class="grid-cols-3" style="border-top:1px solid var(--color-border); padding-top:20px;">
+                <div class="form-group">
+                  <label>Tipo de Relatório</label>
+                  <select class="form-control">
+                    <option>Relatório Geral de Conservação da Cidade</option>
+                    <option>Relatório por Secretaria e Tempo de Resposta</option>
+                    <option>Ocorrências Críticas sem Solução por Bairro</option>
+                    <option>Análise de Cobertura Territorial e Rotas Realizadas</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Período</label>
+                  <select class="form-control">
+                    <option>Últimos 30 dias</option>
+                    <option>Últimos 90 dias</option>
+                    <option>Este ano (2026)</option>
+                    <option>Histórico Completo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Secretaria Relacionada</label>
+                  <select class="form-control">
+                    <option>Todas as secretarias</option>
+                    <option>Secretaria de Obras</option>
+                    <option>Secretaria de Serviços Públicos</option>
+                    <option>Secretaria de Meio Ambiente</option>
+                    <option>Secretaria de Mobilidade Urbana</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:12px; margin-top:12px; border-top:1px solid var(--color-border); padding-top:20px;">
+                <button class="btn btn-primary btn-export" data-format="PDF"><i class="lucide-file-pdf"></i> Gerar PDF e Imprimir</button>
+                <button class="btn btn-success btn-export" data-format="Excel"><i class="lucide-sheet"></i> Exportar Planilha Excel</button>
+                <button class="btn btn-secondary btn-export" data-format="CSV"><i class="lucide-file-code"></i> Exportar CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ABA 8: VEÍCULOS ================= -->
+        <div id="view-vehicles" class="view-section">
+          <div class="grid-cols-3" id="vehicles-list-target">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+        <!-- ================= ABA 9: EQUIPES ================= -->
+        <div id="view-teams" class="view-section">
+          <div class="grid-cols-3" id="teams-list-target">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+        <!-- ================= ABA 10: CONFIGURAÇÕES E IA ================= -->
+        <div id="view-superadmin" class="view-section">
+          
+          <div class="grid-cols-2">
+            <!-- Bloco do Status do Modelo de Visão Computacional -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Gestão de Inteligência Artificial</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px; font-size:0.88rem;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+                  <span><strong>Modelo ativo:</strong></span> <span style="color:var(--color-primary); font-weight:700;">YOLOv8x - Inspeção Urbana v2.4</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+                  <span><strong>Framework:</strong></span> <span>PyTorch / Roboflow Endpoint</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+                  <span><strong>Precisão Média (mAP):</strong></span> <span style="color:var(--color-success); font-weight:700;">91.4%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+                  <span><strong>Tempo de Resposta Médio:</strong></span> <span>120 ms / frame</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+                  <span><strong>Desfoque LGPD (Rostos e Placas):</strong></span> <span style="color:var(--color-success);font-weight:700;">Simulado (Ativado)</span>
+                </div>
+
+                <div class="form-group" style="margin-top:10px;">
+                  <label for="conf-threshold-range">Limiar de Confiança Mínimo (IA)</label>
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <input type="range" id="conf-threshold-range" min="30" max="95" value="70" style="flex:1;">
+                    <span style="font-weight:700;">70%</span>
+                  </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="showToast('Modelo de visão re-sincronizado!', 'success')" style="margin-top:10px;">
+                  <i class="lucide-rotate-cw"></i> Recarregar Pesos do Modelo
+                </button>
+              </div>
+            </div>
+
+            <!-- Endpoint de API Doc -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Endpoint da API Integrada</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem;">
+                <p>O CidadeScan AI expõe um endpoint RESTful para integração de dashcams e câmeras terceirizadas:</p>
+                <div style="background-color: var(--color-primary-dark); color:#38BDF8; font-family:monospace; padding:12px; border-radius:6px; font-size:0.78rem;">
+                  POST /api/ai/analyze
+                </div>
+                <div><strong>Body (Multipart Form):</strong></div>
+                <ul style="padding-left:16px; color:var(--color-text-sub); display:flex; flex-direction:column; gap:4px;">
+                  <li><code>file</code>: Vídeo ou Imagem (MP4, JPG, PNG)</li>
+                  <li><code>latitude</code>: GPS Latitude</li>
+                  <li><code>longitude</code>: GPS Longitude</li>
+                  <li><code>vehicle_id</code>: ID do veículo coletor</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Logs LGPD -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><i class="lucide-clipboard-list"></i> Logs de Auditoria LGPD e Segurança</div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data / Hora</th>
+                    <th>Operador</th>
+                    <th>Ação Executada</th>
+                    <th>IP / Origem</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-logs-table-body">
+                  <!-- Preenchido via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- TOAST CONTAINER PARA NOTIFICAÇÕES -->
+      <div id="toast-container" class="toast-container"></div>
+
+    </main>
+
+  </div>
+
+  <!-- ================= MODAIS ================= -->
+
+  <!-- 1. MODAL ORDEM DE SERVIÇO -->
+  <div class="modal-backdrop" id="os-modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>Criar Ordem de Serviço</h3>
+        <button class="modal-close" id="close-os-modal">&times;</button>
+      </div>
+      <form id="os-form">
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+          <p style="font-size:0.88rem; color:var(--color-text-sub);">
+            Preencha os dados abaixo para despachar a equipe operacional e gerar a ordem de serviço oficial referente à ocorrência <strong id="os-occurrence-code">CS-XXXXXX</strong>.
+          </p>
+
+          <div style="background-color:var(--color-bg-gray); padding:12px; border-radius:8px; font-size:0.85rem; display:flex; flex-direction:column; gap:4px;">
+            <div><strong>Problema:</strong> <span id="os-category">Pavimentação</span></div>
+            <div><strong>Localização:</strong> <span id="os-address">Rua Assunção, Centro</span></div>
+            <div><strong>Secretaria Vinculada:</strong> <span id="os-department">Secretaria de Obras</span></div>
+            <div><strong>Equipe Padrão:</strong> <span id="os-team">Equipe Alpha Obras</span></div>
+          </div>
+
+          <div class="grid-cols-2">
+            <div class="form-group">
+              <label for="os-priority">Prioridade de Atendimento</label>
+              <select id="os-priority" class="form-control" required>
+                <option value="Urgente">Urgente (Imediato)</option>
+                <option value="Alta">Alta (Até 24h)</option>
+                <option value="Normal" selected>Normal (Manutenção programada)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="os-date">Prazo para Execução</label>
+              <input type="date" id="os-date" class="form-control" value="2026-07-15" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="os-desc">Instruções de Serviço</label>
+            <textarea id="os-desc" class="form-control" rows="3" placeholder="Ex: Efetuar repavimentação asfáltica com uso de massa asfáltica quente..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="os-material">Materiais Estimados</label>
+            <input type="text" id="os-material" class="form-control" placeholder="Ex: 50kg de asfalto, brita, rolo compressor...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('os-modal-backdrop').classList.remove('show')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Gerar Ordem de Serviço</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MODAL COMPARADOR TEMPORAL (ANTES E DEPOIS) -->
+  <div class="modal-backdrop" id="compare-modal-backdrop">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <h3>Evolução da Ocorrência - <span id="compare-item-code">CS-XXXX</span></h3>
+        <button class="modal-close" id="close-compare-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:20px;">
+        <div id="compare-item-sub" style="font-weight:700; font-size:1.1rem; color:var(--color-primary-dark);">Pavimentação - Prainha</div>
+        
+        <!-- Container de Sobreposição de Imagem com Slider -->
+        <div class="img-compare-container" id="compare-slider-container">
+          
+          <!-- Imagem de "Antes" (Fundo) -->
+          <div class="img-compare-img img-compare-under">
+            <img id="compare-img-before" src="" alt="Buraco original">
+            <span class="img-compare-label left-label" id="compare-date-before">Antes</span>
+          </div>
+
+          <!-- Imagem de "Depois" (Sobreposta com largura dinâmica) -->
+          <div class="img-compare-img img-compare-overlay" id="compare-after-wrapper" style="width: 50%;">
+            <img id="compare-img-after" src="" alt="Rua reparada">
+            <span class="img-compare-label right-label" id="compare-date-after">Depois</span>
+          </div>
+
+          <!-- Barra de controle deslizante horizontal -->
+          <div class="img-compare-slider-bar" id="compare-slider-bar" style="left: 50%;">
+            <div class="img-compare-slider-button">
+              <i class="lucide-arrow-left-right" style="width:16px;"></i>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="background-color: var(--color-bg-gray); padding:16px; border-radius:12px;">
+          <h4 style="font-weight:700; font-size:0.95rem; margin-bottom:6px; color:var(--color-primary-dark);">Relatório de Comparação Temporal</h4>
+          <p id="compare-details-text" style="font-size:0.88rem; color:var(--color-text-main); line-height:1.5;"></p>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('compare-modal-backdrop').classList.remove('show')">Fechar Comparador</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. MODAL VARREDURA MANUAL (SIMULADOR DE ANALISE IA) -->
+  <div class="modal-backdrop" id="sweep-manual-modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>Simular Nova Varredura (Análise IA)</h3>
+        <button class="modal-close" id="close-manual-modal">&times;</button>
+      </div>
+      <form id="sweep-manual-form">
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+          <p style="font-size:0.85rem; color:var(--color-text-sub);">
+            Selecione uma imagem de bordo, o bairro correspondente e o veículo de coleta oficial para simular o upload e o processamento de imagens pela visão computacional.
+          </p>
+
+          <div class="form-group">
+            <label for="sweep-manual-neighborhood">Bairro do Registro</label>
+            <select id="sweep-manual-neighborhood" class="form-control" required>
+              <option value="">Selecione um bairro</option>
+              <option value="Centro">Centro</option>
+              <option value="Prainha">Prainha</option>
+              <option value="Monte Alto">Monte Alto</option>
+              <option value="Vila Nova">Vila Nova</option>
+              <option value="Jardim Esperança">Jardim Esperança</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sweep-manual-vehicle">Veículo Coletor</label>
+            <select id="sweep-manual-vehicle" class="form-control" required>
+              <option value="1">Caminhão de Coleta 01</option>
+              <option value="3">Viatura Fiscalização 05</option>
+              <option value="7">Moto Coleta Rápida 01</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sweep-manual-select-preset">Imagem da Câmera (Preset de Simulação)</label>
+            <select id="sweep-manual-select-preset" class="form-control" required>
+              <option value="">Selecione uma imagem para simular o upload</option>
+              <option value="https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=60">Pavimentação: Buraco na via</option>
+              <option value="https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&auto=format&fit=crop&q=60">Limpeza Urbana: Acúmulo de sacos de lixo</option>
+              <option value="https://images.unsplash.com/photo-1508962914676-134849a727f0?w=600&auto=format&fit=crop&q=60">Vegetação: Mato alto na calçada</option>
+            </select>
+          </div>
+
+          <!-- Preview da imagem -->
+          <img id="sweep-manual-preview-img" src="" alt="Preview" style="width:100%; height:200px; object-fit:cover; border-radius:8px; display:none; border: 1px solid var(--color-border);">
+
+          <!-- Progresso de Carregamento (Simulação) -->
+          <div id="sweep-manual-progress-container" style="display:none; margin-top:10px;">
+            <div style="font-size:0.8rem; font-weight:700; margin-bottom:6px; display:flex; justify-content:space-between;">
+              <span>Visão Computacional Analisando Frames...</span>
+              <span>Processando</span>
+            </div>
+            <div style="width:100%; height:8px; background-color:var(--color-bg-gray); border-radius:4px; overflow:hidden;">
+              <div id="sweep-manual-progress-fill" style="width:0%; height:100%; background-color:var(--color-primary); transition: width 0.15s;"></div>
+            </div>
+          </div>
+
+          <!-- Resultados Detecção (Simulados) -->
+          <div id="sweep-manual-results" style="display:none; background-color:rgba(34, 197, 94, 0.05); border:1px solid rgba(34, 197, 94, 0.2); padding:16px; border-radius:8px;">
+            <h4 style="font-weight:700; color:var(--color-success); font-size:0.95rem; margin-bottom:10px;">Detecção Efetuada com Sucesso</h4>
+            <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:6px;">
+              <div><strong>Categoria IA:</strong> <span id="res-val-cat">Pavimentação</span></div>
+              <div><strong>Subcategoria:</strong> <span id="res-val-sub">Buraco</span></div>
+              <div><strong>Confiança IA:</strong> <span id="res-val-confidence" style="color:var(--color-success);font-weight:700;">94%</span></div>
+              <div><strong>Endereço Estimado:</strong> <span id="res-val-addr">Rua</span></div>
+              <div><strong>Gravidade Sugerida:</strong> <span id="res-val-severity">Alta</span></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('sweep-manual-modal-backdrop').classList.remove('show'); resetManualSweepModal();">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="sweep-manual-submit-btn">Enviar e Processar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. MODAL DEMONSTRAÇÃO AUTOMÁTICA (ROTA AO VIVO) -->
+  <div class="modal-backdrop" id="sweep-auto-modal-backdrop">
+    <div class="modal-container modal-lg">
+      <div class="modal-header" style="background-color: var(--color-primary-dark); color:white; border-bottom-color: rgba(255,255,255,0.1);">
+        <h3>Demonstração da Varredura Inteligente Automatizada</h3>
+        <button class="modal-close" id="close-auto-modal" style="color:white;">&times;</button>
+      </div>
+      <div class="modal-body" style="background-color:#090D1A; color:white; padding:20px; overflow:hidden;">
+        
+        <p style="font-size:0.8rem; color:#94A3B8; margin-bottom:16px;">
+          Esta demonstração simula o <strong>Caminhão de Coleta 01</strong> percorrendo vias da <strong>Prainha</strong> em tempo real, gravando vídeo e gerando detecções instantâneas no mapa operacional e Central de Validação.
+        </p>
+
+        <div class="simulation-screen-wrapper">
+          
+          <!-- Lado Esquerdo: Vídeo Telemetria de Borda e Mapa -->
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            
+            <!-- Feed da Câmera -->
+            <div class="camera-feed-box">
+              <img id="auto-sweep-feed-img" src="https://images.unsplash.com/photo-1544984243-ec57ea16fe25?w=600&auto=format&fit=crop&q=60" alt="Camera Feed">
+              
+              <!-- Elementos HUD -->
+              <div class="camera-hud">
+                <div class="hud-rec">
+                  <div class="rec-dot"></div>
+                  <span>LIVE FEED CAM 01</span>
+                </div>
+                <div class="hud-gps">
+                  <span id="auto-sweep-hud-lat">LAT: -22.9660</span><br>
+                  <span id="auto-sweep-hud-lng">LNG: -42.0230</span>
+                </div>
+                <div class="hud-telemetry">
+                  <span>VEL: 32 km/h</span><br>
+                  <span id="auto-sweep-hud-km">0.0 km</span>
+                </div>
+                
+                <!-- Caixa de Detecção IA horizontal -->
+                <div class="ai-bounding-box-sim" id="auto-sweep-overlay-box" style="display:none;">
+                  <span class="ai-bounding-box-label">BURACO (94%)</span>
+                </div>
+
+                <!-- Laser Scanning Line -->
+                <div class="laser-scanning-line"></div>
+              </div>
+            </div>
+
+            <!-- Mapa Real Time Leaflet -->
+            <div style="height:250px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); position:relative;">
+              <div id="auto-sweep-map" style="width:100%; height:100%; z-index:1;"></div>
+            </div>
+
+          </div>
+
+          <!-- Lado Direito: Log de Detecções da IA em tempo real -->
+          <div style="background-color:#0F172A; border-radius:8px; border:1px solid rgba(255,255,255,0.1); padding:16px; display:flex; flex-direction:column; overflow:hidden; height:686px;">
+            <h4 style="font-weight:700; color:#38BDF8; font-size:0.9rem; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+              Logs da Inteligência Artificial
+            </h4>
+            <ul id="auto-sweep-log-list" style="list-style:none; display:flex; flex-direction:column; gap:8px; flex:1; overflow-y:auto; padding-right:4px;">
+              <!-- Linhas de log inseridas dinamicamente -->
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+      <div class="modal-footer" style="background-color: #090D1A; border-top-color: rgba(255,255,255,0.1);">
+        <button class="btn btn-secondary" onclick="document.getElementById('sweep-auto-modal-backdrop').classList.remove('show'); stopAutoSweepSimulation();" style="background-color:#1E293B; color:white; border-color:rgba(255,255,255,0.15)">Parar e Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Semente e Lógica de Scripts -->
+  <script src="mockData.js"></script>
+  <!-- TensorFlow.js e COCO-SSD para Inteligência Artificial de Visão Computacional Real -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Chart.js para Relatórios -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons via CDN para iconografia moderna -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    // Inicialização do Lucide
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
+  
+  <!-- App Core JS -->
+  <script src="app.js"></script>
+</body>
+</html>

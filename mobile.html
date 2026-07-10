@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CidadeScan AI - Câmera de Bordo Inteligente (Dashcam)</title>
+  
+  <!-- CSS Global -->
+  <link rel="stylesheet" href="app.css">
+  
+  <!-- Fontes Google Outfit / Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background-color: #0B132B;
+      color: #F8FAFC;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      font-family: 'Outfit', sans-serif;
+    }
+    
+    .simulation-helper-panel {
+      max-width: 320px;
+      margin-right: 40px;
+      background-color: #1E293B;
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    /* Moldura da Câmera de Bordo (Dashcam Widescreen) */
+    .dashcam-device-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Suporte de ventosa da câmera */
+    .dashcam-mount {
+      width: 60px;
+      height: 40px;
+      background-color: #27272a;
+      border-radius: 10px 10px 0 0;
+      position: relative;
+      margin-bottom: -5px;
+      box-shadow: inset 0 8px 10px rgba(0,0,0,0.5);
+    }
+    
+    .dashcam-mount::after {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 15px;
+      background-color: #18181b;
+      border-radius: 50% 50% 0 0;
+    }
+
+    .dashcam-frame {
+      width: 720px;
+      height: 420px;
+      border: 20px solid #27272a;
+      border-bottom: 30px solid #18181b; /* Espaço para LEDs e botões físicos */
+      border-radius: 24px;
+      background-color: #09090b;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* LEDs Indicadores de Hardware */
+    .dashcam-leds {
+      position: absolute;
+      bottom: -22px;
+      left: 30px;
+      display: flex;
+      gap: 16px;
+      z-index: 100;
+    }
+
+    .led-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #a1a1aa;
+    }
+
+    .led-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #3f3f46;
+    }
+
+    .led-dot.active-green {
+      background-color: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    .led-dot.active-blue {
+      background-color: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    .led-dot.active-red-flash {
+      background-color: #ef4444;
+      animation: flashLed 1s infinite alternate;
+    }
+
+    @keyframes flashLed {
+      from { opacity: 0.2; box-shadow: 0 0 0px #ef4444; }
+      to { opacity: 1; box-shadow: 0 0 8px #ef4444; }
+    }
+
+    /* Marca gravada na carcaça */
+    .dashcam-brand {
+      position: absolute;
+      bottom: -25px;
+      right: 30px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #52525b;
+      letter-spacing: 1px;
+    }
+
+    /* Layout da tela interna */
+    .dashcam-screen {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      background-color: #090d16;
+    }
+
+    /* Viewfinder da Câmera (Esquerda) */
+    .dashcam-viewfinder {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .dashcam-viewfinder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: filter 0.3s;
+    }
+
+    /* Barra de Controle Lateral (Direita) */
+    .dashcam-control-sidebar {
+      width: 230px;
+      background-color: #111827;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      box-sizing: border-box;
+      gap: 12px;
+    }
+
+    /* Overlay do Viewfinder */
+    .viewfinder-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .hud-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hud-rec-badge {
+      background-color: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #94a3b8;
+    }
+
+    .hud-rec-badge.recording {
+      color: #ef4444;
+    }
+
+    .hud-rec-badge.recording .rec-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #ef4444;
+      border-radius: 50%;
+      animation: flashLed 1s infinite alternate;
+    }
+
+    .hud-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: #38bdf8;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+
+    .hud-telemetry-box {
+      background-color: rgba(11, 31, 58, 0.85);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dashcam-action-btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-dashcam-primary {
+      background-color: #1473e6;
+      color: white;
+      box-shadow: 0 4px 10px rgba(20, 115, 230, 0.3);
+    }
+
+    .btn-dashcam-primary.recording {
+      background-color: #ef4444;
+      box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+      animation: pulseBtn 1.5s infinite;
+    }
+
+    @keyframes pulseBtn {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .btn-dashcam-secondary {
+      background-color: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .btn-dashcam-secondary:hover {
+      background-color: #374151;
+    }
+
+    .btn-dashcam-secondary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 1100px) {
+      body {
+        flex-direction: column;
+        padding-top: 40px;
+      }
+      .simulation-helper-panel {
+        margin-right: 0;
+        margin-bottom: 20px;
+        max-width: 100%;
+        width: 100%;
+      }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Painel Auxiliar de Simulação à Esquerda -->
+  <div class="simulation-helper-panel">
+    <div style="display:flex; align-items:center; gap:8px; color:#38BDF8; font-weight:700; margin-bottom:12px;">
+      <i data-lucide="video"></i>
+      <span>Simulador da Câmera de Bordo</span>
+    </div>
+    <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:10px; color:white;">Dashcam Inteligente</h3>
+    <p style="font-size:0.8rem; color:#94A3B8; line-height:1.5; margin-bottom:16px;">
+      Esta é a câmera embarcada no para-brisa do veículo oficial. Ela possui GPS, 5G integrado e realiza o mapeamento das vias de forma 100% autônoma.
+    </p>
+    <div style="font-size:0.75rem; background-color:rgba(20,115,230,0.1); border:1px dashed rgba(20,115,230,0.3); padding:10px; border-radius:8px; color:#38BDF8; line-height:1.4;">
+      <strong>Como funciona:</strong> Ao rodar a varredura, o sistema simula a visão do asfalto. Se desconectar a rede 5G (Offline), as imagens captadas acumulam na fila local do MicroSD da câmera e sobem quando reatar o sinal.
+    </div>
+  </div>
+
+  <!-- Dispositivo Dashcam -->
+  <div class="dashcam-device-container">
+    <!-- Suporte de ventosa -->
+    <div class="dashcam-mount"></div>
+
+    <div class="dashcam-frame">
+      
+      <!-- LEDs Indicadores Físicos -->
+      <div class="dashcam-leds">
+        <div class="led-item">
+          <div class="led-dot active-green" id="led-pwr"></div> PWR
+        </div>
+        <div class="led-item">
+          <div class="led-dot active-blue" id="led-gps"></div> GPS
+        </div>
+        <div class="led-item">
+          <div class="led-dot" id="led-rec"></div> REC
+        </div>
+      </div>
+
+      <!-- Logomarca -->
+      <div class="dashcam-brand">CidadeScan v1.4</div>
+
+      <!-- Tela Interna da Câmera -->
+      <div class="dashcam-screen">
+        
+        <!-- Viewfinder (Imagem da Via) -->
+        <div class="dashcam-viewfinder" id="dashcam-viewport" style="position:relative;">
+          <img id="cam-preview-img" src="https://images.unsplash.com/photo-1544984243-ec57ea16fe25?w=600&auto=format&fit=crop&q=60" alt="Estrada" style="filter: brightness(0.15); width: 100%; height: 100%; object-fit: cover; display: block;">
+          <video id="webcam-stream" autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.85); transform: scaleX(-1);"></video>
+          <!-- Container para Bounding Boxes da Webcam Real -->
+          <div id="webcam-bbox-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></div>
+          <!-- Overlay de Carregamento da IA -->
+          <div id="tf-loading-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(15,23,42,0.85); display:none; align-items:center; justify-content:center; flex-direction:column; gap:10px; z-index:15;">
+            <div style="width:28px; height:28px; border:3px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
+            <span style="font-size:0.75rem; color:#e2e8f0; font-weight:600;" id="tf-loading-text">Carregando Rede Neural COCO-SSD...</span>
+          </div>
+
+          <!-- HUD do Viewfinder -->
+          <div class="viewfinder-hud">
+            <div class="hud-top-row">
+              <div class="hud-rec-badge" id="hud-rec-state">
+                <div class="rec-dot" style="display:none;"></div>
+                <span id="hud-rec-text">STANDBY</span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; background-color:rgba(0,0,0,0.75); border:1px solid rgba(255,255,255,0.15); padding:4px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">
+                <span id="hud-wifi-icon" style="color:#22C55E; display:flex; align-items:center; gap:4px;">
+                  <i data-lucide="wifi" style="width:12px;height:12px;"></i> 5G LINK
+                </span>
+              </div>
+            </div>
+
+            <!-- Caixa de Bounding Box de Detecção de IA na Dashcam -->
+            <div class="ai-bounding-box-sim" id="cam-detection-overlay" style="display:none; width:110px; height:80px; top:40%; left:35%;">
+              <span class="ai-bounding-box-label" style="font-size:0.6rem; top:-20px;">BURACO (95%)</span>
+            </div>
+
+            <div class="hud-bottom-row">
+              <div class="hud-telemetry-box">
+                <span id="hud-lat">LAT: -22.8820</span>
+                <span id="hud-lng">LNG: -42.0180</span>
+              </div>
+              <div class="hud-telemetry-box" style="text-align:right;">
+                <span id="hud-speed">VEL: 0 km/h</span>
+                <span id="hud-time">TIME: 00:00:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de Controle Lateral (Painel de Monitoramento) -->
+        <div class="dashcam-control-sidebar">
+          
+          <!-- Seletor do Veículo e Motorista -->
+          <div id="setup-panel" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size:0.7rem; font-weight:700; color:#38bdf8; text-transform:uppercase;">Configurações</div>
+            
+            <div style="font-size:0.7rem; color:#9ca3af;">Veículo Coletor</div>
+            <select id="cam-select-vehicle" style="background:#1f2937; color:white; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; font-size:0.75rem; width:100%; outline:none;">
+              <option value="1">Caminhão de Coleta 01</option>
+              <option value="2">Caminhão de Coleta 02</option>
+              <option value="3">Viatura Fiscalização 05</option>
+            </select>
+
+            <div style="font-size:0.7rem; color:#9ca3af; margin-top:2px;">Operador</div>
+            <select id="cam-select-operator" style="background:#1f2937; color:white; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; font-size:0.75rem; width:100%; outline:none;">
+              <option value="Ricardo Santos">Ricardo Santos</option>
+              <option value="Amanda Costa">Amanda Costa</option>
+            </select>
+
+            <div style="font-size:0.7rem; color:#9ca3af; margin-top:2px;">Origem da Câmera</div>
+            <select id="cam-select-source" style="background:#1f2937; color:white; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; font-size:0.75rem; width:100%; outline:none;">
+              <option value="simulation">Vídeo Simulado (Estrada)</option>
+              <option value="webcam">Webcam Real (Notebook)</option>
+            </select>
+
+            <button class="dashcam-action-btn btn-dashcam-primary" id="btn-cam-mount" style="padding:6px; font-size:0.75rem; margin-top:6px;">
+              Ligar Sistema
+            </button>
+          </div>
+
+          <!-- Painel Ativo de Status (Oculto inicialmente) -->
+          <div id="status-panel" style="display:none; flex-direction:column; gap:8px; flex:1;">
+            
+            <div style="background-color:rgba(255,255,255,0.03); padding:8px; border-radius:6px; font-size:0.75rem; border:1px solid rgba(255,255,255,0.05);">
+              <div><strong>Veículo:</strong> <span id="active-vehicle-label" style="color:#38bdf8;">CAM-01</span></div>
+              <div style="margin-top:2px;"><strong>Operador:</strong> <span id="active-operator-label">Ricardo</span></div>
+            </div>
+
+            <!-- Botão Principal de Gravação -->
+            <button class="dashcam-action-btn btn-dashcam-primary" id="btn-cam-record">
+              <i data-lucide="video"></i> INICIAR VARREDURA
+            </button>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <button class="dashcam-action-btn btn-dashcam-secondary" id="btn-cam-photo" disabled style="padding:6px; font-size:0.7rem;">
+                <i data-lucide="camera" style="width:12px;"></i> Foto Manual
+              </button>
+              <button class="dashcam-action-btn btn-dashcam-secondary" id="btn-cam-conn" style="padding:6px; font-size:0.7rem; color:#22c55e;">
+                <i data-lucide="wifi" style="width:12px;"></i> 5G ON
+              </button>
+            </div>
+
+            <!-- Fila de Upload Local -->
+            <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,255,255,0.05); background:rgba(0,0,0,0.15); border-radius:6px; padding:6px; margin-top:4px;">
+              <div style="font-size:0.65rem; font-weight:700; color:#9ca3af; display:flex; justify-content:space-between; margin-bottom:4px; padding-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <span>Fila SD Card</span>
+                <span id="cam-sync-status" style="color:#22c55e;">Sync ok</span>
+              </div>
+              <ul id="cam-sync-list" style="list-style:none; padding:0; margin:0; overflow-y:auto; flex:1; font-size:0.62rem; color:#9ca3af; display:flex; flex-direction:column; gap:4px;">
+                <li style="font-style:italic;">Nenhum arquivo pendente.</li>
+              </ul>
+            </div>
+
+            <button class="btn btn-danger" id="btn-cam-unmount" style="padding:4px; font-size:0.72rem; margin-top:auto;">
+              Desligar Aparelho
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="mockData.js"></script>
+  <!-- TensorFlow.js e COCO-SSD para Inteligência Artificial de Visão Computacional Real -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- ESTADO LOCAL CAMERA ---
+      const camState = {
+        isSystemOn: false,
+        driver: 'Ricardo Santos',
+        vehicleId: 1,
+        vehicleName: 'Caminhão de Coleta 01',
+        isOnline: true,
+        isScanning: false,
+        duration: 0,
+        distance: 0,
+        filesCount: 0,
+        intervalId: null,
+        offlineQueue: []
+      };
+
+      // Atualiza o relógio do HUD com segundos
+      setInterval(() => {
+        const d = new Date();
+        const timeStr = `TIME: ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+        document.getElementById('hud-time').innerText = timeStr;
+      }, 1000);
+
+      let localWebcamStream = null;
+      let cocoModel = null;
+      let cocoRequestFrameId = null;
+
+      // Botão Ligar Sistema
+      const btnMount = document.getElementById('btn-cam-mount');
+      btnMount.addEventListener('click', () => {
+        camState.isSystemOn = true;
+        camState.driver = document.getElementById('cam-select-operator').value;
+        const selectVeh = document.getElementById('cam-select-vehicle');
+        camState.vehicleId = parseInt(selectVeh.value);
+        camState.vehicleName = selectVeh.options[selectVeh.selectedIndex].text;
+
+        document.getElementById('active-vehicle-label').innerText = camState.vehicleId === 1 ? 'CAM-01' : (camState.vehicleId === 2 ? 'CAM-02' : 'FIS-05');
+        document.getElementById('active-operator-label').innerText = camState.driver.split(' ')[0];
+
+        document.getElementById('setup-panel').style.display = 'none';
+        document.getElementById('status-panel').style.display = 'flex';
+        
+        const camSource = document.getElementById('cam-select-source').value;
+        const previewImg = document.getElementById('cam-preview-img');
+        const videoEl = document.getElementById('webcam-stream');
+
+        if (camSource === 'webcam') {
+          const loadingOverlay = document.getElementById('tf-loading-overlay');
+          loadingOverlay.style.display = 'flex';
+          
+          const loadModelAndStart = () => {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280, height: 720 } })
+              .then(stream => {
+                localWebcamStream = stream;
+                videoEl.srcObject = stream;
+                videoEl.style.display = 'block';
+                previewImg.style.display = 'none';
+                loadingOverlay.style.display = 'none';
+                
+                showToast('Webcam ligada e Rede Neural carregada!', 'success');
+                if (window.lucide) window.lucide.createIcons();
+              })
+              .catch(err => {
+                console.error(err);
+                loadingOverlay.style.display = 'none';
+                showToast('Sem acesso à webcam. Usando simulação por imagem.', 'warning');
+                videoEl.style.display = 'none';
+                previewImg.style.display = 'block';
+                previewImg.style.filter = 'brightness(1)';
+              });
+          };
+
+          if (!cocoModel) {
+            cocoSsd.load()
+              .then(model => {
+                cocoModel = model;
+                loadModelAndStart();
+              })
+              .catch(err => {
+                console.error(err);
+                loadingOverlay.style.display = 'none';
+                showToast('Erro ao carregar o TensorFlow COCO-SSD.', 'danger');
+                videoEl.style.display = 'none';
+                previewImg.style.display = 'block';
+                previewImg.style.filter = 'brightness(1)';
+              });
+          } else {
+            loadModelAndStart();
+          }
+        } else {
+          videoEl.style.display = 'none';
+          previewImg.style.display = 'block';
+          previewImg.style.filter = 'brightness(1)';
+          showToast('CidadeScan OS: Carregando rede neural local...', 'success');
+        }
+      });
+
+      // Botão Desligar Aparelho
+      document.getElementById('btn-cam-unmount').addEventListener('click', () => {
+        stopScanning();
+        camState.isSystemOn = false;
+        
+        if (localWebcamStream) {
+          localWebcamStream.getTracks().forEach(track => track.stop());
+          localWebcamStream = null;
+        }
+
+        const previewImg = document.getElementById('cam-preview-img');
+        const videoEl = document.getElementById('webcam-stream');
+        videoEl.style.display = 'none';
+        previewImg.style.display = 'block';
+        previewImg.style.filter = 'brightness(0.15)';
+        
+        // Limpa bboxes
+        document.getElementById('webcam-bbox-container').innerHTML = '';
+
+        document.getElementById('setup-panel').style.display = 'flex';
+        document.getElementById('status-panel').style.display = 'none';
+      });
+
+      // Controle de Gravação / Varredura
+      const recordBtn = document.getElementById('btn-cam-record');
+      recordBtn.addEventListener('click', () => {
+        if (!camState.isScanning) {
+          startScanning();
+        } else {
+          stopScanning();
+        }
+      });
+
+      // Simulação de Conectividade 5G
+      const connBtn = document.getElementById('btn-cam-conn');
+      connBtn.addEventListener('click', () => {
+        camState.isOnline = !camState.isOnline;
+        const wifiIcon = document.getElementById('hud-wifi-icon');
+        const syncStatus = document.getElementById('cam-sync-status');
+        const ledGps = document.getElementById('led-gps');
+
+        if (camState.isOnline) {
+          connBtn.innerHTML = '<i data-lucide="wifi" style="width:12px;"></i> 5G ON';
+          connBtn.style.color = '#22c55e';
+          wifiIcon.innerHTML = '<i data-lucide="wifi" style="width:12px;height:12px;"></i> 5G LINK';
+          wifiIcon.style.color = '#22C55E';
+          ledGps.className = 'led-dot active-blue';
+          
+          processOfflineQueue();
+        } else {
+          connBtn.innerHTML = '<i data-lucide="wifi-off" style="width:12px;"></i> 5G OFF';
+          connBtn.style.color = '#ef4444';
+          wifiIcon.innerHTML = '<i data-lucide="wifi-off" style="width:12px;height:12px;"></i> OFFLINE';
+          wifiIcon.style.color = '#EF4444';
+          ledGps.className = 'led-dot'; // apaga led de sinal
+          
+          syncStatus.innerText = 'Pendente';
+          syncStatus.style.color = '#f59e0b';
+        }
+        
+        if (window.lucide) window.lucide.createIcons();
+      });
+
+      // Foto Manual
+      document.getElementById('btn-cam-photo').addEventListener('click', () => {
+        if (!camState.isScanning) return;
+        
+        camState.filesCount++;
+        playBeep();
+
+        const detection = {
+          category: 'Pavimentação',
+          subcategory: 'Buraco na via',
+          severity: 'Alta',
+          img: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=60',
+          lat: -22.9660 + (Math.random() - 0.5) * 0.015,
+          lng: -42.0230 + (Math.random() - 0.5) * 0.015
+        };
+
+        if (camState.isOnline) {
+          sendOccurrenceToCentralDB(detection, 'Foto Manual Dashcam');
+          showSyncList();
+        } else {
+          camState.offlineQueue.push(detection);
+          showSyncList();
+        }
+      });
+
+      function startScanning() {
+        camState.isScanning = true;
+        recordBtn.classList.add('recording');
+        recordBtn.innerHTML = '<i data-lucide="square"></i> PARAR VARREDURA';
+        
+        document.getElementById('hud-rec-state').classList.add('recording');
+        document.getElementById('hud-rec-state').querySelector('.rec-dot').style.display = 'block';
+        document.getElementById('hud-rec-text').innerText = 'REC [AI ACTIVE]';
+        document.getElementById('led-rec').className = 'led-dot active-red-flash';
+
+        // Libera botão de foto manual
+        document.getElementById('btn-cam-photo').disabled = false;
+
+        const camSource = document.getElementById('cam-select-source').value;
+        
+        if (camSource === 'webcam' && cocoModel) {
+          cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
+        }
+
+        camState.intervalId = setInterval(() => {
+          camState.duration++;
+          camState.distance += parseFloat((0.009 + Math.random() * 0.005).toFixed(3));
+          
+          // Telemetria no HUD
+          const nextLat = -22.9660 + (Math.random() - 0.5) * 0.006;
+          const nextLng = -42.0230 + (Math.random() - 0.5) * 0.006;
+          document.getElementById('hud-lat').innerText = `LAT: ${nextLat.toFixed(5)}`;
+          document.getElementById('hud-lng').innerText = `LNG: ${nextLng.toFixed(5)}`;
+          
+          if (camSource === 'webcam') {
+            document.getElementById('hud-speed').innerText = `VEL: ${Math.floor(20 + Math.random() * 10)} km/h`;
+          } else {
+            document.getElementById('hud-speed').innerText = `VEL: ${Math.floor(25 + Math.random() * 15)} km/h`;
+            // Varredura de IA automática (apenas no modo simulado)
+            if (camState.duration % 15 === 0) {
+              triggerDashcamAIDetection();
+            }
+          }
+        }, 1000);
+        
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      function stopScanning() {
+        camState.isScanning = false;
+        recordBtn.classList.remove('recording');
+        recordBtn.innerHTML = '<i data-lucide="video"></i> INICIAR VARREDURA';
+        
+        document.getElementById('hud-rec-state').classList.remove('recording');
+        document.getElementById('hud-rec-state').querySelector('.rec-dot').style.display = 'none';
+        document.getElementById('hud-rec-text').innerText = 'STANDBY';
+        document.getElementById('led-rec').className = 'led-dot';
+        document.getElementById('hud-speed').innerText = 'VEL: 0 km/h';
+
+        document.getElementById('btn-cam-photo').disabled = true;
+
+        if (cocoRequestFrameId) {
+          cancelAnimationFrame(cocoRequestFrameId);
+          cocoRequestFrameId = null;
+        }
+
+        // Limpa bboxes
+        const container = document.getElementById('webcam-bbox-container');
+        if (container) container.innerHTML = '';
+
+        if (camState.intervalId) {
+          clearInterval(camState.intervalId);
+          camState.intervalId = null;
+        }
+        
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      // --- INTELIGÊNCIA ARTIFICIAL E PROCESSADOR HEURÍSTICO EM TEMPO REAL ---
+      function runCocoDetection() {
+        if (!camState.isScanning || !localWebcamStream) {
+          const container = document.getElementById('webcam-bbox-container');
+          if (container) container.innerHTML = '';
+          return;
+        }
+
+        const videoEl = document.getElementById('webcam-stream');
+        if (videoEl && videoEl.readyState === 4) {
+          // 1. Detecção via Rede Neural (Veículos, Sinalização, Pessoas)
+          cocoModel.detect(videoEl)
+            .then(predictions => {
+              renderCocoPredictions(predictions);
+              processTrafficAIObjects(predictions);
+              
+              // 2. Análise Heurística Pixel-a-Pixel (Buracos de Asfalto, Lixo e Mato Alto)
+              runHeuristicDetection(videoEl);
+
+              if (camState.isScanning) {
+                cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
+              }
+            })
+            .catch(err => {
+              console.error(err);
+              // Fallback executando apenas detecção heurística se a rede neural engasgar
+              runHeuristicDetection(videoEl);
+              if (camState.isScanning) {
+                cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
+              }
+            });
+        } else {
+          if (camState.isScanning) {
+            cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
+          }
+        }
+      }
+
+      function renderCocoPredictions(predictions) {
+        const container = document.getElementById('webcam-bbox-container');
+        if (!container) return;
+        
+        // Remove bboxes antigas de rede neural
+        container.querySelectorAll('.coco-bbox').forEach(el => el.remove());
+
+        const videoEl = document.getElementById('webcam-stream');
+        if (!videoEl || videoEl.videoWidth === 0) return;
+
+        const scaleX = container.offsetWidth / videoEl.videoWidth;
+        const scaleY = container.offsetHeight / videoEl.videoHeight;
+
+        predictions.forEach(pred => {
+          const classesInteresse = ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'stop sign', 'traffic light', 'dog', 'cat'];
+          if (!classesInteresse.includes(pred.class)) return;
+
+          const [x, y, w, h] = pred.bbox;
+          const box = document.createElement('div');
+          box.className = 'coco-bbox';
+          box.style.position = 'absolute';
+          
+          const boxLeft = container.offsetWidth - (x + w) * scaleX;
+          
+          box.style.left = `${boxLeft}px`;
+          box.style.top = `${y * scaleY}px`;
+          box.style.width = `${w * scaleX}px`;
+          box.style.height = `${h * scaleY}px`;
+          
+          let color = '#38bdf8'; // Azul (Veículos)
+          if (pred.class === 'person') color = '#c084fc'; // Roxo (Pedestre)
+          else if (pred.class === 'stop sign' || pred.class === 'traffic light') color = '#34d399'; // Verde (Sinalização)
+          else if (pred.class === 'dog' || pred.class === 'cat') color = '#fb7185'; // Vermelho/Rosa (Animal)
+
+          box.style.border = `2px solid ${color}`;
+          box.style.borderRadius = '4px';
+          box.style.boxShadow = `0 0 6px ${color}80`;
+          box.style.pointerEvents = 'none';
+
+          const label = document.createElement('span');
+          label.innerText = `${translateClass(pred.class)} (${Math.round(pred.score * 100)}%)`;
+          label.style.position = 'absolute';
+          label.style.top = '-16px';
+          label.style.left = '-2px';
+          label.style.backgroundColor = color;
+          label.style.color = '#000000';
+          label.style.fontSize = '0.55rem';
+          label.style.fontWeight = 'bold';
+          label.style.padding = '1px 4px';
+          label.style.borderRadius = '3px 3px 0 0';
+          label.style.whiteSpace = 'nowrap';
+
+          box.appendChild(label);
+          container.appendChild(box);
+        });
+      }
+
+      function translateClass(name) {
+        const trans = {
+          'car': 'VEÍCULO',
+          'truck': 'CAMINHÃO',
+          'bus': 'ÔNIBUS',
+          'motorcycle': 'MOTOCICLETA',
+          'bicycle': 'BICICLETA',
+          'person': 'PEDESTRE',
+          'stop sign': 'PARE (PLACA)',
+          'traffic light': 'SEMÁFORO',
+          'dog': 'ANIMAL',
+          'cat': 'ANIMAL'
+        };
+        return trans[name] || name.toUpperCase();
+      }
+
+      let lastInfrastructureDetectionTime = 0;
+      function processTrafficAIObjects(predictions) {
+        const now = Date.now();
+        if (now - lastInfrastructureDetectionTime < 8000) return;
+
+        const infra = predictions.find(p => (p.class === 'stop sign' || p.class === 'traffic light') && p.score > 0.75);
+        if (infra) {
+          lastInfrastructureDetectionTime = now;
+          playBeep();
+          
+          camState.filesCount++;
+
+          const latVal = parseFloat(document.getElementById('hud-lat').innerText.split(' ')[1]) || -22.9660;
+          const lngVal = parseFloat(document.getElementById('hud-lng').innerText.split(' ')[1]) || -42.0230;
+
+          const sub = infra.class === 'stop sign' ? 'Placa de Pare' : 'Semáforo';
+          const detection = {
+            category: 'Sinalização',
+            subcategory: `${sub} Identificado`,
+            severity: 'Baixa',
+            img: 'https://images.unsplash.com/photo-1508962914676-134849a727f0?w=600&auto=format&fit=crop&q=60',
+            lat: latVal,
+            lng: lngVal
+          };
+
+          if (camState.isOnline) {
+            sendOccurrenceToCentralDB(detection, 'Webcam Real (Sinalização)');
+            showSyncList();
+          } else {
+            camState.offlineQueue.push(detection);
+            showSyncList();
+          }
+          showToast(`[AI REAL] Detectado: ${sub} na via!`, 'success');
+        }
+      }
+
+      // --- ENGINE DE VISÃO POR HEURÍSTICA DE IMAGEM ---
+      function runHeuristicDetection(videoEl) {
+        const width = 160;
+        const height = 120;
+        if (!window.heuristicCanvas) {
+          window.heuristicCanvas = document.createElement('canvas');
+          window.heuristicCanvas.width = width;
+          window.heuristicCanvas.height = height;
+          window.heuristicCtx = window.heuristicCanvas.getContext('2d');
+        }
+        const ctx = window.heuristicCtx;
+        ctx.drawImage(videoEl, 0, 0, width, height);
+
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+
+        const gridCols = 16;
+        const gridRows = 12;
+        const cellWidth = 10;
+        const cellHeight = 10;
+
+        const counts = Array.from({ length: gridRows }, () => Array.from({ length: gridCols }, () => ({
+          pothole: 0,
+          trash: 0,
+          vegetation: 0
+        })));
+
+        // Escaneia a metade inferior (y de 60 a 115) - plano de pista
+        for (let y = 60; y < 115; y++) {
+          for (let x = 10; x < 150; x++) {
+            const idx = (y * width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+
+            const brightness = (r + g + b) / 3;
+            const colorfulness = Math.max(r, g, b) - Math.min(r, g, b);
+
+            const col = Math.floor(x / cellWidth);
+            const row = Math.floor(y / cellHeight);
+
+            // A. Buraco / Depressão do Asfalto (Muito escuro/sombras de alta densidade no leito carroçável)
+            if (brightness < 46 && colorfulness < 18) {
+              counts[row][col].pothole++;
+            }
+            // B. Lixo Acumulado (Altamente saturado/artificial, ex. sacolas, latas coloridas na calçada)
+            else if (colorfulness > 50 && !(g > r + 10 && g > b + 10)) {
+              counts[row][col].trash++;
+            }
+            // C. Mato Alto / Vegetação (Clusters com forte dominância verde)
+            else if (g > r + 14 && g > b + 10 && brightness > 30) {
+              counts[row][col].vegetation++;
+            }
+          }
+        }
+
+        const activeCells = [];
+        for (let r = 6; r < 11; r++) {
+          for (let c = 1; c < 15; c++) {
+            const cell = counts[r][c];
+            if (cell.pothole > 25) {
+              activeCells.push({ r, c, type: 'pothole' });
+            } else if (cell.trash > 18) {
+              activeCells.push({ r, c, type: 'trash' });
+            } else if (cell.vegetation > 28) {
+              activeCells.push({ r, c, type: 'vegetation' });
+            }
+          }
+        }
+
+        const visited = Array.from({ length: gridRows }, () => Array(gridCols).fill(false));
+        const groups = [];
+
+        activeCells.forEach(cell => {
+          if (visited[cell.r][cell.c]) return;
+
+          const queue = [cell];
+          const group = [cell];
+          visited[cell.r][cell.c] = true;
+
+          while (queue.length > 0) {
+            const curr = queue.shift();
+            const dirs = [
+              { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+              { dr: 0, dc: -1 }, { dr: 0, dc: 1 }
+            ];
+            dirs.forEach(d => {
+              const nr = curr.r + d.dr;
+              const nc = curr.c + d.dc;
+              if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                if (!visited[nr][nc]) {
+                  const activeMatch = activeCells.find(ac => ac.r === nr && ac.c === nc && ac.type === cell.type);
+                  if (activeMatch) {
+                    visited[nr][nc] = true;
+                    queue.push(activeMatch);
+                    group.push(activeMatch);
+                  }
+                }
+              }
+            });
+          }
+
+          if (group.length >= 2) {
+            groups.push({ type: cell.type, cells: group });
+          }
+        });
+
+        renderHeuristicBBoxes(groups, videoEl);
+        processHeuristicDetections(groups);
+      }
+
+      function renderHeuristicBBoxes(groups, videoEl) {
+        const container = document.getElementById('webcam-bbox-container');
+        if (!container) return;
+        
+        container.querySelectorAll('.heuristic-bbox').forEach(el => el.remove());
+
+        const width = 160;
+        const height = 120;
+        const scaleX = container.offsetWidth / width;
+        const scaleY = container.offsetHeight / height;
+
+        groups.forEach(group => {
+          let minCol = 16, maxCol = 0, minRow = 12, maxRow = 0;
+          group.cells.forEach(cell => {
+            if (cell.c < minCol) minCol = cell.c;
+            if (cell.c > maxCol) maxCol = cell.c;
+            if (cell.r < minRow) minRow = cell.r;
+            if (cell.r > maxRow) maxRow = cell.r;
+          });
+
+          const x = minCol * 10;
+          const y = minRow * 10;
+          const w = (maxCol - minCol + 1) * 10;
+          const h = (maxRow - minRow + 1) * 10;
+
+          const box = document.createElement('div');
+          box.className = 'heuristic-bbox';
+          box.style.position = 'absolute';
+          
+          const boxLeft = container.offsetWidth - (x + w) * scaleX;
+
+          box.style.left = `${boxLeft}px`;
+          box.style.top = `${y * scaleY}px`;
+          box.style.width = `${w * scaleX}px`;
+          box.style.height = `${h * scaleY}px`;
+
+          let color = '#ef4444'; // Vermelho (Buraco)
+          let labelText = 'BURACO DE PAVIMENTO';
+          if (group.type === 'trash') {
+            color = '#f59e0b'; // Amarelo (Lixo)
+            labelText = 'RESÍDUO / LIXO URBANO';
+          } else if (group.type === 'vegetation') {
+            color = '#10b981'; // Verde (Mato)
+            labelText = 'VEGETAÇÃO IRREGULAR';
+          }
+
+          box.style.border = `2px solid ${color}`;
+          box.style.borderRadius = '4px';
+          box.style.boxShadow = `0 0 8px ${color}90`;
+          box.style.pointerEvents = 'none';
+
+          const label = document.createElement('span');
+          label.innerText = labelText;
+          label.style.position = 'absolute';
+          label.style.top = '-16px';
+          label.style.left = '-2px';
+          label.style.backgroundColor = color;
+          label.style.color = '#ffffff';
+          label.style.fontSize = '0.55rem';
+          label.style.fontWeight = 'bold';
+          label.style.padding = '1px 4px';
+          label.style.borderRadius = '3px 3px 0 0';
+          label.style.whiteSpace = 'nowrap';
+
+          box.appendChild(label);
+          container.appendChild(box);
+        });
+      }
+
+      let lastHeuristicDetectionTime = {};
+      function processHeuristicDetections(groups) {
+        const now = Date.now();
+
+        groups.forEach(group => {
+          if (lastHeuristicDetectionTime[group.type] && (now - lastHeuristicDetectionTime[group.type] < 12000)) {
+            return;
+          }
+
+          lastHeuristicDetectionTime[group.type] = now;
+          playBeep();
+
+          camState.filesCount++;
+
+          const latVal = parseFloat(document.getElementById('hud-lat').innerText.split(' ')[1]) || -22.9660;
+          const lngVal = parseFloat(document.getElementById('hud-lng').innerText.split(' ')[1]) || -42.0230;
+
+          let category = '';
+          let subcategory = '';
+          let severity = '';
+          let img = '';
+
+          if (group.type === 'pothole') {
+            category = 'Pavimentação';
+            subcategory = 'Buraco na via';
+            severity = 'Alta';
+            img = 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=60';
+          } else if (group.type === 'trash') {
+            category = 'Limpeza Urbana';
+            subcategory = 'Lixo acumulado';
+            severity = 'Média';
+            img = 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&auto=format&fit=crop&q=60';
+          } else if (group.type === 'vegetation') {
+            category = 'Vegetação';
+            subcategory = 'Mato alto na via';
+            severity = 'Baixa';
+            img = 'https://images.unsplash.com/photo-1508962914676-134849a727f0?w=600&auto=format&fit=crop&q=60';
+          }
+
+          const detection = {
+            category,
+            subcategory,
+            severity,
+            img,
+            lat: latVal,
+            lng: lngVal
+          };
+
+          if (camState.isOnline) {
+            sendOccurrenceToCentralDB(detection, 'Varredura Real Heurística');
+            showSyncList();
+          } else {
+            camState.offlineQueue.push(detection);
+            showSyncList();
+          }
+
+          showToast(`[AI VISÃO REAL] Detectado: ${subcategory} na via!`, 'danger');
+        });
+      }
+
+      // Captura de Cliques no Viewport para Marcação Manual Auxiliar de Buracos
+      document.getElementById('dashcam-viewport').addEventListener('click', (e) => {
+        if (!camState.isScanning) return;
+        
+        const camSource = document.getElementById('cam-select-source').value;
+        if (camSource !== 'webcam') return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const container = document.getElementById('webcam-bbox-container');
+        const box = document.createElement('div');
+        box.style.position = 'absolute';
+        box.style.left = `${clickX - 40}px`;
+        box.style.top = `${clickY - 30}px`;
+        box.style.width = '80px';
+        box.style.height = '60px';
+        box.style.border = '2px dashed #ef4444';
+        box.style.borderRadius = '4px';
+        box.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.7)';
+
+        const label = document.createElement('span');
+        label.innerText = 'BURACO (95%)';
+        label.style.position = 'absolute';
+        label.style.top = '-16px';
+        label.style.left = '-2px';
+        label.style.backgroundColor = '#ef4444';
+        label.style.color = 'white';
+        label.style.fontSize = '0.55rem';
+        label.style.fontWeight = 'bold';
+        label.style.padding = '1px 4px';
+        label.style.borderRadius = '3px 3px 0 0';
+
+        box.appendChild(label);
+        container.appendChild(box);
+
+        setTimeout(() => box.remove(), 3000);
+
+        camState.filesCount++;
+        playBeep();
+
+        const latVal = parseFloat(document.getElementById('hud-lat').innerText.split(' ')[1]) || -22.9660;
+        const lngVal = parseFloat(document.getElementById('hud-lng').innerText.split(' ')[1]) || -42.0230;
+
+        const detection = {
+          category: 'Pavimentação',
+          subcategory: 'Buraco na via',
+          severity: 'Alta',
+          img: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=60',
+          lat: latVal,
+          lng: lngVal
+        };
+
+        if (camState.isOnline) {
+          sendOccurrenceToCentralDB(detection, 'Webcam Real (Mapeamento Manual)');
+          showSyncList();
+        } else {
+          camState.offlineQueue.push(detection);
+          showSyncList();
+        }
+        
+        showToast('Buraco reportado via toque e enviado ao painel!', 'success');
+      });
+
+      function triggerDashcamAIDetection() {
+        const overlay = document.getElementById('cam-detection-overlay');
+        playBeep();
+
+        // Altera imagem do visor temporariamente (Lixo Acumulado)
+        document.getElementById('cam-preview-img').src = 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&auto=format&fit=crop&q=60';
+        overlay.style.display = 'block';
+
+        camState.filesCount++;
+
+        const latVal = parseFloat(document.getElementById('hud-lat').innerText.split(' ')[1]);
+        const lngVal = parseFloat(document.getElementById('hud-lng').innerText.split(' ')[1]);
+
+        const detection = {
+          category: 'Limpeza Urbana',
+          subcategory: 'Lixo acumulado',
+          severity: 'Média',
+          img: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&auto=format&fit=crop&q=60',
+          lat: latVal,
+          lng: lngVal
+        };
+
+        if (camState.isOnline) {
+          sendOccurrenceToCentralDB(detection, 'Câmera Veicular Auto');
+          showSyncList();
+        } else {
+          camState.offlineQueue.push(detection);
+          showSyncList();
+        }
+
+        // Reseta visor
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          document.getElementById('cam-preview-img').src = 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?w=600&auto=format&fit=crop&q=60';
+        }, 3000);
+      }
+
+      function showSyncList() {
+        const list = document.getElementById('cam-sync-list');
+        list.innerHTML = '';
+
+        if (camState.offlineQueue.length === 0) {
+          list.innerHTML = `<li style="font-style:italic;">Nenhum arquivo pendente.</li>`;
+          return;
+        }
+
+        camState.offlineQueue.forEach((q, idx) => {
+          const li = document.createElement('li');
+          li.style.display = 'flex';
+          li.style.justifyContent = 'space-between';
+          li.style.padding = '2px 0';
+          li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+          li.innerHTML = `<span>#${idx+1} [${q.subcategory}]</span> <span style="color:#f59e0b;">SD QUEUE</span>`;
+          list.appendChild(li);
+        });
+      }
+
+      function processOfflineQueue() {
+        if (camState.offlineQueue.length === 0) return;
+        
+        const syncStatus = document.getElementById('cam-sync-status');
+        syncStatus.innerText = 'Uploading...';
+        syncStatus.style.color = '#38bdf8';
+
+        setTimeout(() => {
+          camState.offlineQueue.forEach(item => {
+            sendOccurrenceToCentralDB(item, 'Câmera Veicular Sincronizado');
+          });
+
+          camState.offlineQueue = [];
+          showSyncList();
+
+          syncStatus.innerText = 'Sync ok';
+          syncStatus.style.color = '#22c55e';
+          
+          showToast('Câmera de Bordo: Fila offline transmitida com sucesso!', 'success');
+        }, 1500);
+      }
+
+      function sendOccurrenceToCentralDB(detection, source) {
+        try {
+          const dbData = localStorage.getItem('cidadescan_db');
+          if (dbData) {
+            const db = JSON.parse(dbData);
+            const newId = db.occurrences.length + 1;
+            const dateStr = new Date().toISOString().substring(0, 10);
+            const timeStr = new Date().toTimeString().substring(0, 8);
+            const street = db.routes[0]?.neighborhood ? window.CidadeScan.STREETS_BY_NEIGHBORHOOD[db.routes[0].neighborhood][Math.floor(Math.random() * 5)] : 'Avenida Central';
+
+            const newOcc = {
+              id: newId,
+              code: `CS-${2026000 + newId}`,
+              municipalityId: 1,
+              category: detection.category,
+              subcategory: detection.subcategory,
+              descriptionAuto: `Identificado automaticamente via ${source} da Dashcam com 92% de confiança.`,
+              descriptionManual: '',
+              imageMain: detection.img,
+              imagesComplementary: [],
+              videoClipUrl: '',
+              latitude: parseFloat(detection.lat.toFixed(6)),
+              longitude: parseFloat(detection.lng.toFixed(6)),
+              address: `${street}, ~${Math.floor(Math.random() * 800) + 1}`,
+              street: street,
+              neighborhood: 'Centro',
+              cep: '28930-000',
+              dateCapture: dateStr,
+              timeCapture: timeStr,
+              dateCreated: dateStr,
+              vehicleId: camState.vehicleId,
+              vehicleName: camState.vehicleName,
+              driverName: camState.driver,
+              routeName: `Varredura Câmera Veicular`,
+              cameraModel: 'Onboard Smart Dashcam v1.4',
+              confidence: 92,
+              severitySuggested: detection.severity,
+              severityConfirmed: detection.severity,
+              department: window.CidadeScan.CATEGORIES[detection.category].department,
+              teamName: db.teams.find(t => t.department === window.CidadeScan.CATEGORIES[detection.category].department)?.name || 'Equipe Alpha Obras',
+              status: 'Aguardando validação',
+              priority: 'Normal',
+              deadline: dateStr,
+              history: [
+                { status: 'Detectada pela IA', date: `${dateStr} ${timeStr}`, user: 'Câmera Veicular' },
+                { status: 'Aguardando validação', date: `${dateStr} ${timeStr}`, user: 'Sistema' }
+              ],
+              comments: [],
+              isDuplicate: false,
+              duplicateGroupId: null
+            };
+
+            db.occurrences.unshift(newOcc);
+            localStorage.setItem('cidadescan_db', JSON.stringify(db));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function playBeep() {
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(750, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+          oscillator.start();
+          setTimeout(() => {
+            oscillator.stop();
+            audioCtx.close();
+          }, 100);
+        } catch (e) {}
+      }
+
+      function showToast(message, type = 'success') {
+        // Envia log para o console para fins auxiliares
+        console.log(`[DASHCAM TOAST] ${message} (${type})`);
+      }
+
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
