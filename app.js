@@ -2205,4 +2205,77 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) {
     window.lucide.createIcons();
   }
+
+  // --- 17. SINCRONIZAÇÃO EM TEMPO REAL VIA NUVEM (WEBSOCKET) ---
+  let syncSocket = null;
+
+  function connectDashboardSyncSocket() {
+    const syncCodeInput = document.getElementById('header-sync-code');
+    const syncCode = syncCodeInput ? syncCodeInput.value.trim().toLowerCase() : 'thiago-scan';
+
+    try {
+      if (syncSocket) {
+        syncSocket.close();
+      }
+      
+      syncSocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
+      
+      syncSocket.onopen = () => {
+        console.log(`CidadeScan Cloud Sync: Conectado ao canal com código '${syncCode}'`);
+      };
+
+      syncSocket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          
+          if (msg.type === 'NEW_OCCURRENCE' && msg.syncCode === syncCode) {
+            const newOcc = msg.occurrence;
+            
+            // Evita duplicados
+            const exists = state.db.occurrences.some(o => o.code === newOcc.code);
+            if (!exists) {
+              state.db.occurrences.unshift(newOcc);
+              window.CidadeScan.saveDB(state.db);
+              
+              // Alerta sonoro e visual
+              playBeepChime();
+              
+              // Atualiza visualização ativa
+              renderDashboardStats();
+              renderDashboardCharts();
+              if (state.activeTab === 'occurrences') {
+                renderOccurrencesTable();
+              }
+              if (state.activeTab === 'map') {
+                plotOccurrencesOnMap();
+              }
+              
+              showToast(`[NUVEM] Nova ocorrência real sincronizada: ${newOcc.subcategory}!`, 'success');
+            }
+          }
+        } catch (e) {
+          // Ignora mensagens que não sejam JSON ou que pertençam a outros usuários
+        }
+      };
+
+      syncSocket.onclose = () => {
+        // Tenta reconectar a cada 5 segundos
+        setTimeout(connectDashboardSyncSocket, 5000);
+      };
+    } catch (e) {
+      console.error('Falha ao conectar no WebSocket de Sincronização:', e);
+    }
+  }
+
+  // Monitora alterações do código de sincronização no cabeçalho
+  const syncCodeInput = document.getElementById('header-sync-code');
+  if (syncCodeInput) {
+    syncCodeInput.addEventListener('change', () => {
+      connectDashboardSyncSocket();
+      showToast('Código de sincronização atualizado!', 'success');
+    });
+  }
+
+  // Inicializa a conexão de sync no carregamento do app
+  connectDashboardSyncSocket();
 });

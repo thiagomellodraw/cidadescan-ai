@@ -422,6 +422,9 @@
               <option value="webcam">Webcam Real (Notebook)</option>
             </select>
 
+            <div style="font-size:0.7rem; color:#9ca3af; margin-top:2px;">Código de Sincronização</div>
+            <input type="text" id="cam-sync-code" value="thiago-scan" style="background:#1f2937; color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3); border-radius:4px; padding:4px 8px; font-size:0.75rem; width:100%; outline:none; font-weight:700; text-transform:lowercase;" placeholder="ex: thiago-scan">
+
             <button class="dashcam-action-btn btn-dashcam-primary" id="btn-cam-mount" style="padding:6px; font-size:0.75rem; margin-top:6px;">
               Ligar Sistema
             </button>
@@ -1321,9 +1324,39 @@
 
             db.occurrences.unshift(newOcc);
             localStorage.setItem('cidadescan_db', JSON.stringify(db));
+
+            // Transmite ocorrência para a nuvem
+            const syncCode = document.getElementById('cam-sync-code')?.value || 'thiago-scan';
+            if (syncSocket && syncSocket.readyState === WebSocket.OPEN) {
+              syncSocket.send(JSON.stringify({
+                type: 'NEW_OCCURRENCE',
+                syncCode: syncCode,
+                occurrence: newOcc
+              }));
+              console.log('CidadeScan Cloud: Transmitida ocorrência via código', syncCode);
+            }
           }
         } catch (e) {
           console.error(e);
+        }
+      }
+
+      function connectSyncSocket() {
+        const syncCode = document.getElementById('cam-sync-code')?.value || 'thiago-scan';
+        try {
+          if (syncSocket) {
+            syncSocket.close();
+          }
+          syncSocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
+          syncSocket.onopen = () => {
+            console.log('CidadeScan Cloud: Sincronização conectada no canal.');
+            showToast('Conectado à Nuvem CidadeScan!', 'success');
+          };
+          syncSocket.onclose = () => {
+            console.log('CidadeScan Cloud: Conexão encerrada.');
+          };
+        } catch (e) {
+          console.error('Falha ao conectar WebSocket:', e);
         }
       }
 
