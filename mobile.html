@@ -532,7 +532,7 @@
           loadingOverlay.style.display = 'flex';
           
           const loadModelAndStart = () => {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280, height: 720 } })
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } })
               .then(stream => {
                 localWebcamStream = stream;
                 videoEl.srcObject = stream;
