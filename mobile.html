@@ -477,9 +477,7 @@
   </div>
 
   <script src="mockData.js"></script>
-  <!-- TensorFlow.js e COCO-SSD para Inteligência Artificial de Visão Computacional Real -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // --- ESTADO LOCAL CAMERA ---
@@ -505,8 +503,7 @@
       }, 1000);
 
       let localWebcamStream = null;
-      let cocoModel = null;
-      let cocoRequestFrameId = null;
+      let heuristicRequestFrameId = null;
 
       // Botão Ligar Sistema
       const btnMount = document.getElementById('btn-cam-mount');
@@ -526,59 +523,37 @@
         const camSource = document.getElementById('cam-select-source').value;
         const previewImg = document.getElementById('cam-preview-img');
         const videoEl = document.getElementById('webcam-stream');
-
+        
         if (camSource === 'webcam') {
-          const loadingOverlay = document.getElementById('tf-loading-overlay');
-          loadingOverlay.style.display = 'flex';
-          
-          const loadModelAndStart = () => {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } })
-              .then(stream => {
-                localWebcamStream = stream;
-                videoEl.srcObject = stream;
-                videoEl.style.display = 'block';
-                previewImg.style.display = 'none';
-                loadingOverlay.style.display = 'none';
-                
-                showToast('Webcam ligada e Rede Neural carregada!', 'success');
-                if (window.lucide) window.lucide.createIcons();
-                
-                // Inicializa o streaming de vídeo via WebRTC para a central
-                setTimeout(initWebRTCPeer, 1500);
-              })
-              .catch(err => {
-                console.error(err);
-                loadingOverlay.style.display = 'none';
-                showToast('Sem acesso à webcam. Usando simulação por imagem.', 'warning');
-                videoEl.style.display = 'none';
-                previewImg.style.display = 'block';
-                previewImg.style.filter = 'brightness(1)';
-              });
-          };
-
-          if (!cocoModel) {
-            cocoSsd.load()
-              .then(model => {
-                cocoModel = model;
-                loadModelAndStart();
-              })
-              .catch(err => {
-                console.error(err);
-                loadingOverlay.style.display = 'none';
-                showToast('Erro ao carregar o TensorFlow COCO-SSD.', 'danger');
-                videoEl.style.display = 'none';
-                previewImg.style.display = 'block';
-                previewImg.style.filter = 'brightness(1)';
-              });
-          } else {
-            loadModelAndStart();
-          }
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+            .then(stream => {
+              localWebcamStream = stream;
+              videoEl.srcObject = stream;
+              videoEl.style.display = 'block';
+              previewImg.style.display = 'none';
+              
+              showToast('Webcam ligada com sucesso!', 'success');
+              if (window.lucide) window.lucide.createIcons();
+              
+              // Inicializa o streaming de vídeo via WebRTC para a central
+              setTimeout(initWebRTCPeer, 1500);
+            })
+            .catch(err => {
+              console.error(err);
+              showToast('Sem acesso à webcam. Usando simulação por imagem.', 'warning');
+              videoEl.style.display = 'none';
+              previewImg.style.display = 'block';
+              previewImg.style.filter = 'brightness(1)';
+            });
         } else {
           videoEl.style.display = 'none';
           previewImg.style.display = 'block';
           previewImg.style.filter = 'brightness(1)';
-          showToast('CidadeScan OS: Carregando rede neural local...', 'success');
+          showToast('CidadeScan OS: Simulação ativa.', 'success');
         }
+        
+        // Conecta ao canal de sincronização na nuvem
+        connectSyncSocket();
       });
 
       // Botão Desligar Aparelho
@@ -684,8 +659,9 @@
 
         const camSource = document.getElementById('cam-select-source').value;
         
-        if (camSource === 'webcam' && cocoModel) {
-          cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
+        if (camSource === 'webcam') {
+          // Inicia o loop heurístico de pixels na webcam real
+          heuristicRequestFrameId = requestAnimationFrame(runHeuristicFrameLoop);
         }
 
         camState.intervalId = setInterval(() => {
@@ -770,9 +746,9 @@
 
         document.getElementById('btn-cam-photo').disabled = true;
 
-        if (cocoRequestFrameId) {
-          cancelAnimationFrame(cocoRequestFrameId);
-          cocoRequestFrameId = null;
+        if (heuristicRequestFrameId) {
+          cancelAnimationFrame(heuristicRequestFrameId);
+          heuristicRequestFrameId = null;
         }
 
         // Limpa bboxes
@@ -787,8 +763,7 @@
         if (window.lucide) window.lucide.createIcons();
       }
 
-      // --- INTELIGÊNCIA ARTIFICIAL E PROCESSADOR HEURÍSTICO EM TEMPO REAL ---
-      function runCocoDetection() {
+      function runHeuristicFrameLoop() {
         if (!camState.isScanning || !localWebcamStream) {
           const container = document.getElementById('webcam-bbox-container');
           if (container) container.innerHTML = '';
@@ -797,142 +772,15 @@
 
         const videoEl = document.getElementById('webcam-stream');
         if (videoEl && videoEl.readyState === 4) {
-          // 1. Detecção via Rede Neural (Veículos, Sinalização, Pessoas)
-          cocoModel.detect(videoEl)
-            .then(predictions => {
-              renderCocoPredictions(predictions);
-              processTrafficAIObjects(predictions);
-              
-              // 2. Análise Heurística Pixel-a-Pixel (Buracos de Asfalto, Lixo e Mato Alto)
-              runHeuristicDetection(videoEl);
+          runHeuristicDetection(videoEl);
+        }
 
-              if (camState.isScanning) {
-                cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
-              }
-            })
-            .catch(err => {
-              console.error(err);
-              // Fallback executando apenas detecção heurística se a rede neural engasgar
-              runHeuristicDetection(videoEl);
-              if (camState.isScanning) {
-                cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
-              }
-            });
-        } else {
-          if (camState.isScanning) {
-            cocoRequestFrameId = requestAnimationFrame(runCocoDetection);
-          }
+        if (camState.isScanning) {
+          heuristicRequestFrameId = requestAnimationFrame(runHeuristicFrameLoop);
         }
       }
 
-      function renderCocoPredictions(predictions) {
-        const container = document.getElementById('webcam-bbox-container');
-        if (!container) return;
-        
-        // Remove bboxes antigas de rede neural
-        container.querySelectorAll('.coco-bbox').forEach(el => el.remove());
 
-        const videoEl = document.getElementById('webcam-stream');
-        if (!videoEl || videoEl.videoWidth === 0) return;
-
-        const scaleX = container.offsetWidth / videoEl.videoWidth;
-        const scaleY = container.offsetHeight / videoEl.videoHeight;
-
-        predictions.forEach(pred => {
-          const classesInteresse = ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'stop sign', 'traffic light', 'dog', 'cat'];
-          if (!classesInteresse.includes(pred.class)) return;
-
-          const [x, y, w, h] = pred.bbox;
-          const box = document.createElement('div');
-          box.className = 'coco-bbox';
-          box.style.position = 'absolute';
-          
-          const boxLeft = container.offsetWidth - (x + w) * scaleX;
-          
-          box.style.left = `${boxLeft}px`;
-          box.style.top = `${y * scaleY}px`;
-          box.style.width = `${w * scaleX}px`;
-          box.style.height = `${h * scaleY}px`;
-          
-          let color = '#38bdf8'; // Azul (Veículos)
-          if (pred.class === 'person') color = '#c084fc'; // Roxo (Pedestre)
-          else if (pred.class === 'stop sign' || pred.class === 'traffic light') color = '#34d399'; // Verde (Sinalização)
-          else if (pred.class === 'dog' || pred.class === 'cat') color = '#fb7185'; // Vermelho/Rosa (Animal)
-
-          box.style.border = `2px solid ${color}`;
-          box.style.borderRadius = '4px';
-          box.style.boxShadow = `0 0 6px ${color}80`;
-          box.style.pointerEvents = 'none';
-
-          const label = document.createElement('span');
-          label.innerText = `${translateClass(pred.class)} (${Math.round(pred.score * 100)}%)`;
-          label.style.position = 'absolute';
-          label.style.top = '-16px';
-          label.style.left = '-2px';
-          label.style.backgroundColor = color;
-          label.style.color = '#000000';
-          label.style.fontSize = '0.55rem';
-          label.style.fontWeight = 'bold';
-          label.style.padding = '1px 4px';
-          label.style.borderRadius = '3px 3px 0 0';
-          label.style.whiteSpace = 'nowrap';
-
-          box.appendChild(label);
-          container.appendChild(box);
-        });
-      }
-
-      function translateClass(name) {
-        const trans = {
-          'car': 'VEÍCULO',
-          'truck': 'CAMINHÃO',
-          'bus': 'ÔNIBUS',
-          'motorcycle': 'MOTOCICLETA',
-          'bicycle': 'BICICLETA',
-          'person': 'PEDESTRE',
-          'stop sign': 'PARE (PLACA)',
-          'traffic light': 'SEMÁFORO',
-          'dog': 'ANIMAL',
-          'cat': 'ANIMAL'
-        };
-        return trans[name] || name.toUpperCase();
-      }
-
-      let lastInfrastructureDetectionTime = 0;
-      function processTrafficAIObjects(predictions) {
-        const now = Date.now();
-        if (now - lastInfrastructureDetectionTime < 8000) return;
-
-        const infra = predictions.find(p => (p.class === 'stop sign' || p.class === 'traffic light') && p.score > 0.75);
-        if (infra) {
-          lastInfrastructureDetectionTime = now;
-          playBeep();
-          
-          camState.filesCount++;
-
-          const latVal = parseFloat(document.getElementById('hud-lat').innerText.split(' ')[1]) || -22.9660;
-          const lngVal = parseFloat(document.getElementById('hud-lng').innerText.split(' ')[1]) || -42.0230;
-
-          const sub = infra.class === 'stop sign' ? 'Placa de Pare' : 'Semáforo';
-          const detection = {
-            category: 'Sinalização',
-            subcategory: `${sub} Identificado`,
-            severity: 'Baixa',
-            img: 'https://images.unsplash.com/photo-1508962914676-134849a727f0?w=600&auto=format&fit=crop&q=60',
-            lat: latVal,
-            lng: lngVal
-          };
-
-          if (camState.isOnline) {
-            sendOccurrenceToCentralDB(detection, 'Webcam Real (Sinalização)');
-            showSyncList();
-          } else {
-            camState.offlineQueue.push(detection);
-            showSyncList();
-          }
-          showToast(`[AI REAL] Detectado: ${sub} na via!`, 'success');
-        }
-      }
 
       // --- ENGINE DE VISÃO POR HEURÍSTICA DE IMAGEM ---
       function runHeuristicDetection(videoEl) {
