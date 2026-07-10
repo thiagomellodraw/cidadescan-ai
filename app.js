@@ -2248,16 +2248,27 @@ document.addEventListener('DOMContentLoaded', () => {
   function connectDashboardSyncSocket() {
     const syncCodeInput = document.getElementById('header-sync-code');
     const syncCode = syncCodeInput ? syncCodeInput.value.trim().toLowerCase() : 'thiago-scan';
+    const statusEl = document.getElementById('debug-sync-status');
 
     try {
       if (syncSocket) {
         syncSocket.close();
       }
+      if (statusEl) {
+        statusEl.innerText = 'CONECTANDO...';
+        statusEl.style.color = '#ef4444';
+        statusEl.style.textShadow = '0 0 4px #ef4444';
+      }
       
-      syncSocket = new WebSocket('wss://free.piesocket.com/v3/demo?api_key=VCbEZPAZWSVJE4fsEPYvCwTM503q1IQOfmwh1y2P');
+      syncSocket = new WebSocket('wss://javascript.info/article/websocket/chat');
       
       syncSocket.onopen = () => {
         console.log(`CidadeScan Cloud Sync: Conectado ao canal com código '${syncCode}'`);
+        if (statusEl) {
+          statusEl.innerText = 'CONECTADO';
+          statusEl.style.color = '#22c55e';
+          statusEl.style.textShadow = '0 0 4px #22c55e';
+        }
       };
 
       syncSocket.onmessage = (event) => {
@@ -2339,8 +2350,22 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       syncSocket.onclose = () => {
+        console.log('CidadeScan Cloud Sync: Conexão encerrada.');
+        if (statusEl) {
+          statusEl.innerText = 'DESCONECTADO';
+          statusEl.style.color = '#ef4444';
+          statusEl.style.textShadow = '0 0 4px #ef4444';
+        }
         // Tenta reconectar a cada 5 segundos
         setTimeout(connectDashboardSyncSocket, 5000);
+      };
+
+      syncSocket.onerror = (err) => {
+        console.error('Erro no WebSocket do Dashboard:', err);
+        if (statusEl) {
+          statusEl.innerText = 'ERRO';
+          statusEl.style.color = '#ef4444';
+        }
       };
     } catch (e) {
       console.error('Falha ao conectar no WebSocket de Sincronização:', e);
